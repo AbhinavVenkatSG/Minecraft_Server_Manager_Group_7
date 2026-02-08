@@ -67,4 +67,4 @@ public ReturnType methodName(ParameterType paramName) {
 * **[ ] Logic: Implementation follows the steps in Section 4.
 * **[ ] Verification: Unit tests (JUnit/Mockito) pass for all cases in Section 5.
 * **[ ] Documentation: Javadoc comments are present and accurate.
-* **[ ] Quality: Code passes the linter/checkstyle without warnings.
+* **[ ] Quality: Code passes the linter/checkstyle without warnings..
