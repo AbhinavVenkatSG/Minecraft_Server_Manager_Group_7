@@ -47,7 +47,7 @@ public ReturnType methodName(ParameterType paramName) {
 ```
 (This will have to be expanded to include typescript syntax)
 
-## 4. Technical Logic Flow
+## 5. Technical Logic Flow
 
 *Define the step-by-step internal logic the programmer must follow:*
 1. Validation:           [e.g., Check if input path is valid or if server is already running]
@@ -56,7 +56,7 @@ public ReturnType methodName(ParameterType paramName) {
 4. Conclusion:           [e.g., Return result or throw specific Exception]
 
 
-## 5. Testing 
+## 6. Testing 
 
 *These tests must be created and failing BEFORE writing the implementation:*
 
@@ -70,7 +70,7 @@ public ReturnType methodName(ParameterType paramName) {
 - 
 
 
-## 6. Definition of Done
+## 7. Definition of Done
 
 * [ ] Naming: Method names and Class names match Section 3 exactly.
 * [ ] Pre-requisites: All prerequisites are verified as merged in main.
