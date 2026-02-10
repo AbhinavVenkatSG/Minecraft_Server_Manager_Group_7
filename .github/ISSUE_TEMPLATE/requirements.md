@@ -20,11 +20,8 @@ assignees: ''
 [Write briefly how you think this functionality should be implemented, in plain english]
 
 
-## 3. Dependencies
-> [!CAUTION]
-> Starting this issue before the following requirements have been implemented will require code stubs to test:
-1. [List any blocking requirements]
-
+3. Dependencies
+If this requirement is blocked by another requirement, attach it in the issue sidebar.
 
 ## 4. The Contract (Naming & Signature)
 *The developer must implement the code exactly as named below to ensure system compatibility.*
