@@ -11,30 +11,4 @@ import java.util.List;
 @RequestMapping("/api/servers/{serverId}/backups")
 public class BackupController {
     
-    private final BackupService backupService;
-    
-    public BackupController(BackupService backupService) {
-        this.backupService = backupService;
-    }
-    
-    @GetMapping
-    public List<Backup> getBackups(@PathVariable Long serverId) {
-        return backupService.getBackupsByServer(serverId);
-    }
-    
-    @PostMapping
-    public ResponseEntity<Backup> createBackup(@PathVariable Long serverId) {
-        return ResponseEntity.ok().build();
-    }
-    
-    @PostMapping("/{backupId}/restore")
-    public ResponseEntity<Void> restoreBackup(@PathVariable Long serverId, @PathVariable Long backupId) {
-        return ResponseEntity.ok().build();
-    }
-    
-    @DeleteMapping("/{backupId}")
-    public ResponseEntity<Void> deleteBackup(@PathVariable Long serverId, @PathVariable Long backupId) {
-        backupService.deleteBackup(backupId);
-        return ResponseEntity.noContent().build();
-    }
 }
