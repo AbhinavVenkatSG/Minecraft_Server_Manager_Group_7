@@ -69,29 +69,30 @@ client/src/
 
 ## 3. Implementation Phases
 
-### Phase 1: Backend Core
-- [ ] CRC-16 utility
-- [ ] Packet model & builder
-- [ ] WebSocket config (binary enabled, 64KB max)
-- [ ] Binary packet handler
-- [ ] API key validation on handshake
+### Phase 1: Backend Core ✅ COMPLETE
+- [x] CRC-16 utility (`websocket/util/CRC16.java`)
+- [x] Packet model & builder (`websocket/protocol/Packet.java`, `PacketBuilder.java`)
+- [x] Packet type enum (`websocket/protocol/PacketType.java`)
+- [x] WebSocket config (binary enabled) (`websocket/config/WebSocketConfig.java`)
+- [x] Binary packet handler (`websocket/handler/BinaryPacketHandler.java`)
+- [x] API key validation (`websocket/config/ApiKeyHandshakeInterceptor.java`)
 
-### Phase 2: Backend Protocol
-- [ ] Command parser (extract prefix & payload)
-- [ ] Response sender
-- [ ] Console log streaming handler
-- [ ] File chunk transfer service
-- [ ] Heartbeat handler
+### Phase 2: Backend Protocol ✅ COMPLETE
+- [x] Command parser (extract prefix & payload)
+- [x] Response sender
+- [x] Console log streaming handler
+- [x] File chunk transfer service
+- [x] Heartbeat handler
 
-### Phase 3: Frontend Core
-- [ ] CRC-16 JS implementation
-- [ ] BinaryPacket utility class
-- [ ] useBinaryWebSocket hook
-- [ ] WebSocket context
+### Phase 3: Frontend Core ✅ COMPLETE
+- [x] CRC-16 JS implementation (`client/src/utils/crc16.js`)
+- [x] BinaryPacket utility class (`client/src/utils/BinaryPacket.js`)
+- [x] useBinaryWebSocket hook (`client/src/hooks/useBinaryWebSocket.js`)
+- [x] WebSocket context (`client/src/context/WebSocketContext.jsx`)
 
 ### Phase 4: Frontend Features
 - [ ] File transfer handler (reassemble chunks)
-- [ ] Console log display
+- [ ] Console log display component
 - [ ] Progress tracking
 
 ### Phase 5: Integration & Testing
@@ -140,3 +141,27 @@ Server sends: [0x02, CRC, 18, "BACKUP_STARTING..."]
 Server sends: [0x05, CRC, chunk1] → chunk2 → ... → chunkN
 Server sends: [0x02, CRC, 14, "BACKUP_COMPLETE"]
 ```
+
+---
+
+## 6. Implemented Files
+
+### Backend (Phase 1)
+| File | Path | Description |
+|------|------|-------------|
+| CRC16.java | `server/src/main/java/com/minecraftmanager/websocket/util/` | CRC-16 checksum calculation |
+| PacketType.java | `server/src/main/java/com/minecraftmanager/websocket/protocol/` | Enum for packet types (COMMAND, RESPONSE, etc.) |
+| Packet.java | `server/src/main/java/com/minecraftmanager/websocket/protocol/` | Packet model with toBytes/fromBytes |
+| PacketBuilder.java | `server/src/main/java/com/minecraftmanager/websocket/protocol/` | Helper to build packets |
+| WebSocketConfig.java | `server/src/main/java/com/minecraftmanager/websocket/config/` | WebSocket endpoint registration |
+| ApiKeyHandshakeInterceptor.java | `server/src/main/java/com/minecraftmanager/websocket/config/` | API key validation on handshake |
+| BinaryPacketHandler.java | `server/src/main/java/com/minecraftmanager/websocket/handler/` | Main WebSocket handler |
+
+### Frontend (Phase 1 & 3)
+| File | Path | Description |
+|------|------|-------------|
+| crc16.js | `client/src/utils/` | CRC-16 checksum (JS version) |
+| BinaryPacket.js | `client/src/utils/` | Packet building/parsing utility |
+| FileTransfer.js | `client/src/utils/` | Handle file chunk reassembly |
+| useBinaryWebSocket.js | `client/src/hooks/` | WebSocket connection hook with auto-reconnect |
+| WebSocketContext.jsx | `client/src/context/` | Global state provider for WebSocket |
