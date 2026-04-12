@@ -51,7 +51,23 @@ Total Header: 5 bytes
 | Phase 2 | Complete | Backend Protocol - Console streaming, file chunks |
 | Phase 3 | Complete | Frontend Core - Hooks, context, utilities |
 | Phase 4 | Not Started | Frontend Features - UI components |
-| Phase 5 | Not Started | Integration & Testing |
+| Phase 5 | Not Started | Backend ↔ Minecraft Server Integration |
+| Phase 6 | Not Started | Integration & Testing |
+
+---
+
+## Features Not Yet Implemented
+
+### Backend → Minecraft Server Communication
+
+The following features are not yet implemented (Phase 5):
+
+- Start actual Minecraft server process from Java
+- Send commands to the Minecraft server's stdin
+- Read console output from the Minecraft server's stdout
+- Handle server process lifecycle (start/stop/restart)
+
+**Current state:** Backend only has mock data simulating the communication with a Minecraft server. The actual process integration is not yet implemented.
 
 ---
 
