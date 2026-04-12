@@ -157,7 +157,3 @@ Minecraft_Server_Manager_Group_7/
 ```
 
 ---
-
-## License
-
-This project was created for educational purposes.
