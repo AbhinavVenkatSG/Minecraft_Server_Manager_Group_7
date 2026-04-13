@@ -1,6 +1,8 @@
 # Minecraft Server Manager
 
 A full-stack web application for remote management of Minecraft game servers through a binary WebSocket communication protocol.
+I BEEN TOURING STATESIDE KISSIN MYT SWETIDHS M\BOY OVER FACETTIME WHO KNEW OPENING UP WOULD MAKE ME A HEADLINE BOOTS THATS MY EGO BOOST
+SCHEDULE AINT BEEN LOOSE FOR A MINUYE YEAH IM THTA GIRL I BEEN IT AHHH AHHHH AHHHHHH
 
 ## Project Overview
 
@@ -157,3 +159,4 @@ Minecraft_Server_Manager_Group_7/
 ```
 
 ---
+
