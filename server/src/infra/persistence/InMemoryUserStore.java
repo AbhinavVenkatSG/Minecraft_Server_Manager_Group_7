@@ -1,0 +1,31 @@
+package infra.persistence;
+
+import app.auth.UserStore;
+import domain.user.User;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class InMemoryUserStore implements UserStore {
+    private final AtomicLong nextId = new AtomicLong(1);
+    private final Map<Long, User> usersById = new ConcurrentHashMap<>();
+    private final Map<String, User> usersByUsername = new ConcurrentHashMap<>();
+
+    @Override
+    public Optional<User> findByUsername(String username) {
+        return Optional.ofNullable(usersByUsername.get(username));
+    }
+
+    @Override
+    public User save(User user) {
+        if (user.getId() == 0L) {
+            user.setId(nextId.getAndIncrement());
+        }
+
+        usersById.put(user.getId(), user);
+        usersByUsername.put(user.getUsername(), user);
+        return user;
+    }
+}

@@ -15,9 +15,9 @@ This project enables users to:
 
 | Component | Technology |
 |-----------|------------|
-| Backend | Java, Spring Boot |
+| Backend | Plain Java HTTP server |
 | Frontend | React 19, Vite |
-| Communication | WebSocket with binary packet protocol |
+| Communication | HTTP API, with packet utilities kept in the backend core |
 | Protocol | CRC-16 for data integrity |
 
 ---
@@ -48,8 +48,8 @@ Total Header: 5 bytes
 
 | Phase | Status | Description |
 |-------|--------|-------------|
-| Phase 1 | Complete | Backend Core - CRC-16, Packet model, WebSocket config |
-| Phase 2 | Complete | Backend Protocol - Console streaming, file chunks |
+| Phase 1 | Complete | Backend Core - CRC-16, Packet model, simple folder layout |
+| Phase 2 | Complete | Backend API - plain Java HTTP routes and mock data |
 | Phase 3 | Complete | Frontend Core - Hooks, context, utilities |
 | Phase 4 | Not Started | Frontend Features - UI components |
 | Phase 5 | Not Started | Backend ↔ Minecraft Server Integration |
@@ -76,14 +76,11 @@ The following features are not yet implemented (Phase 5):
 
 ### Backend
 
+- Plain Java entry point with no Maven
+- In-memory auth, server, and backup storage
+- HTTP routes for auth, servers, backups, players, and console commands
 - CRC-16 checksum calculation
-- Binary packet serialization/deserialization
-- WebSocket endpoint at `/ws`
-- API key authentication
-- Command parsing (CMD_START, CMD_STOP, CMD_BACKUP, CMD_STATUS)
-- Console log streaming (mock data)
-- File chunk transfer (mock data)
-- Heartbeat handling
+- Binary packet serialization/deserialization utilities in `server/src/core`
 
 ### Frontend
 
@@ -109,14 +106,22 @@ The following features are not yet implemented (Phase 5):
 
 ## Running the Project
 
-### Backend (Java/Spring Boot)
+### Backend (Plain Java)
 
 ```bash
 cd server
-mvn spring-boot:run
+build.bat
+run.bat
 ```
 
 Server runs on `http://localhost:8080`
+
+If port `8080` is busy:
+
+```bash
+cd server
+run.bat 8090
+```
 
 ### Frontend (React)
 
@@ -127,12 +132,6 @@ npm run dev
 ```
 
 Client runs on `http://localhost:5173`
-
----
-
-## WebSocket Connection
-
-Connect to: `ws://localhost:8080/ws?apiKey=minecraft_server_manager_key`
 
 ---
 
@@ -147,12 +146,13 @@ Minecraft_Server_Manager_Group_7/
 │       ├── utils/               # CRC-16, BinaryPacket, FileTransfer
 │       ├── hooks/              # useBinaryWebSocket
 │       └── context/            # WebSocketContext
-└── server/                    # Spring Boot backend
-    └── src/main/java/
-        └── com/minecraftmanager/
-            └── websocket/
-                ├── config/       # WebSocket config, API key
-                ├── protocol/    # Packet, PacketType, PacketBuilder
-                ├── util/        # CRC16
-                └── handler/     # BinaryPacketHandler
+└── server/                    # Plain Java backend
+    ├── build.bat
+    ├── run.bat
+    └── src/
+        ├── main/              # Entry point
+        ├── app/               # Services and use cases
+        ├── domain/            # Data models
+        ├── core/              # Packet + CRC utilities
+        └── infra/             # HTTP server + in-memory storage
 ```
