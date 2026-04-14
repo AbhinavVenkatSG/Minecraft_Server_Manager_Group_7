@@ -40,6 +40,10 @@ public final class Responses {
                 + "}";
     }
 
+    public static String servers(List<ManagedServer> servers) {
+        return array(servers.stream().map(Responses::server).toList());
+    }
+
     public static String backup(Backup backup) {
         return "{"
                 + "\"id\":" + backup.getId() + ","

@@ -23,8 +23,9 @@ import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        int port = resolvePort(args);
-        Path dataDirectory = Path.of("data");
+        int apiPort = resolveApiPort(args);
+        int webSocketPort = resolveWebSocketPort(args, apiPort);
+        Path dataDirectory = resolveDataDirectory();
         Files.createDirectories(dataDirectory);
 
         FileUserStore userStore = new FileUserStore(dataDirectory);
@@ -56,7 +57,7 @@ public class Main {
         serverCatalogService.ensureInteractiveSetup();
 
         ApiServer apiServer = new ApiServer(
-                port,
+                apiPort,
                 authService,
                 serverCatalogService,
                 startServerService,
@@ -69,11 +70,11 @@ public class Main {
         );
         apiServer.start();
 
-        BinaryWebSocketServer webSocketServer = new BinaryWebSocketServer(port, serverSupport);
+        BinaryWebSocketServer webSocketServer = new BinaryWebSocketServer(webSocketPort, serverSupport);
         webSocketServer.start();
 
-        System.out.println("Minecraft Server Manager API started on http://localhost:" + port);
-        System.out.println("Binary WebSocket Server started on ws://localhost:" + port + "/ws");
+        System.out.println("Minecraft Server Manager API started on http://localhost:" + apiPort);
+        System.out.println("Binary WebSocket Server started on ws://localhost:" + webSocketPort + "/ws");
         System.out.println("Local CLI menu is available below.");
 
         ConsoleMenu consoleMenu = new ConsoleMenu(
@@ -95,7 +96,7 @@ public class Main {
         }
     }
 
-    private static int resolvePort(String[] args) {
+    private static int resolveApiPort(String[] args) {
         if (args.length > 0) {
             return parsePort(args[0], 8080);
         }
@@ -108,11 +109,45 @@ public class Main {
         return 8080;
     }
 
+    private static int resolveWebSocketPort(String[] args, int apiPort) {
+        if (args.length > 1) {
+            return parsePort(args[1], apiPort + 1);
+        }
+
+        String envPort = System.getenv("WS_PORT");
+        if (envPort != null && !envPort.isBlank()) {
+            return parsePort(envPort, apiPort + 1);
+        }
+
+        return apiPort + 1;
+    }
+
     private static int parsePort(String rawValue, int fallback) {
         try {
             return Integer.parseInt(rawValue);
         } catch (NumberFormatException exception) {
             return fallback;
         }
+    }
+
+    private static Path resolveDataDirectory() throws Exception {
+        Path currentWorkingData = Path.of("data").toAbsolutePath().normalize();
+        if (hasPersistedData(currentWorkingData)) {
+            return currentWorkingData;
+        }
+
+        Path codeLocation = Path.of(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        Path serverDirectory = Files.isDirectory(codeLocation) ? codeLocation.getParent() : codeLocation.getParent();
+        Path repositoryData = serverDirectory.getParent().resolve("data").toAbsolutePath().normalize();
+        if (hasPersistedData(repositoryData) || !Files.exists(currentWorkingData)) {
+            return repositoryData;
+        }
+
+        return currentWorkingData;
+    }
+
+    private static boolean hasPersistedData(Path dataDirectory) {
+        return Files.exists(dataDirectory.resolve("servers").resolve("1.properties"))
+                || Files.exists(dataDirectory.resolve("users").resolve("1.dat"));
     }
 }

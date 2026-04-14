@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/$/, '');
 
 class ApiService {
   async request(endpoint, options = {}) {
@@ -55,6 +55,30 @@ class ApiService {
 
   async createServer(serverData) {
     return this.post('/servers', serverData);
+  }
+
+  async startServer(id) {
+    return this.post(`/servers/${id}/start`);
+  }
+
+  async stopServer(id) {
+    return this.post(`/servers/${id}/stop`);
+  }
+
+  async restartServer(id) {
+    return this.post(`/servers/${id}/restart`);
+  }
+
+  async getTelemetry(id) {
+    return this.get(`/servers/${id}/telemetry`);
+  }
+
+  async getConsoleLog(id) {
+    return this.get(`/servers/${id}/console-log`);
+  }
+
+  async sendConsoleCommand(id, command) {
+    return this.post(`/servers/${id}/console`, { command });
   }
 
   async getBackups(id) {

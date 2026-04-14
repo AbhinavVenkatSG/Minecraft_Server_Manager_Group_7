@@ -13,10 +13,17 @@ const typeColors = {
 };
 
 export default function ChatLogs({ server, refreshKey }) {
-  const { consoleLogs, subscribedServers, subscribeToServer, unsubscribeFromServer, sendCommand, clearConsoleLogs } = useWebSocket();
+  const {
+    consoleLogs,
+    subscribedServers,
+    subscribeToServer,
+    unsubscribeFromServer,
+    sendConsoleCommand,
+    requestConsoleLogs,
+    clearConsoleLogs,
+  } = useWebSocket();
   const [command, setCommand] = useState("");
   const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
 
   const lines = server ? consoleLogs[server.id] || [] : [];
@@ -26,13 +33,28 @@ export default function ChatLogs({ server, refreshKey }) {
       if (!subscribedServers.has(server.id)) {
         subscribeToServer(server.id);
       }
+
+      requestConsoleLogs(server.id);
     }
+
     return () => {
       if (server?.id) {
         unsubscribeFromServer(server.id);
       }
     };
-  }, [server?.id, subscribedServers, subscribeToServer, unsubscribeFromServer]);
+  }, [requestConsoleLogs, server?.id, subscribedServers, subscribeToServer, unsubscribeFromServer]);
+
+  useEffect(() => {
+    if (!server?.id) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      requestConsoleLogs(server.id);
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [refreshKey, requestConsoleLogs, server?.id]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
@@ -41,14 +63,17 @@ export default function ChatLogs({ server, refreshKey }) {
   const handleSend = () => {
     if (!command.trim() || !server?.id) return;
     setSending(true);
-    try {
-      sendCommand(`CMD_CONSOLE ${server.id} ${command}`);
-      setCommand("");
-    } catch (error) {
-      console.error("Failed to send command:", error);
-    } finally {
-      setSending(false);
-    }
+    sendConsoleCommand(server.id, command)
+      .then((result) => {
+        if (result.success) {
+          setCommand("");
+        } else {
+          console.error("Failed to send command:", result.error);
+        }
+      })
+      .finally(() => {
+        setSending(false);
+      });
   };
 
   const formatLine = (line, index) => {

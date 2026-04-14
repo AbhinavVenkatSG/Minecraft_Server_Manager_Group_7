@@ -1,22 +1,16 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import {
-  parse,
-  buildCommand,
-  buildHeartbeat,
-  buildConsoleLog,
-  buildTelemetry,
-  Packet,
-} from '../utils/BinaryPacket';
+import { parse, buildHeartbeat } from '../utils/BinaryPacket';
 import { toast } from 'sonner';
+import api from '../services/api';
 
-const WS_URL = 'ws://localhost:8080/ws';
+const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws').replace(/\/$/, '');
 const API_KEY = 'minecraft_server_manager_key';
 
 const WebSocketContext = createContext(null);
 
 export function WebSocketProvider({ children }) {
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [lastError, setLastError] = useState(null);
   const [servers, setServers] = useState([]);
@@ -28,21 +22,35 @@ export function WebSocketProvider({ children }) {
   const reconnectTimeoutRef = useRef(null);
   const heartbeatIntervalRef = useRef(null);
 
+  const markConnected = useCallback(() => {
+    setIsConnected(true);
+    setLastError(null);
+  }, []);
+
+  const handlePacket = useCallback((packet) => {
+    switch (packet.getType()) {
+      case 'RESPONSE':
+        toast.success(packet.getPayload());
+        break;
+      case 'ERROR':
+        toast.error(packet.getPayload());
+        break;
+      case 'HEARTBEAT':
+        break;
+      default:
+        break;
+    }
+  }, []);
+
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN || !isAuthenticated) {
       return;
     }
 
-    const wsUrl = `${WS_URL}?apiKey=${API_KEY}`;
-    const ws = new WebSocket(wsUrl);
-
+    const ws = new WebSocket(`${WS_URL}?apiKey=${API_KEY}`);
     ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => {
-      console.log('WebSocket connected');
-      setIsConnected(true);
-      setLastError(null);
-
       heartbeatIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(buildHeartbeat().toBytes());
@@ -52,37 +60,32 @@ export function WebSocketProvider({ children }) {
 
     ws.onmessage = (event) => {
       try {
-        const data = new Uint8Array(event.data);
-        const packet = parse(data);
-        handlePacket(packet);
+        handlePacket(parse(new Uint8Array(event.data)));
       } catch (error) {
         console.error('Error parsing packet:', error);
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+    ws.onerror = () => {
       setLastError('WebSocket connection error');
     };
 
     ws.onclose = (event) => {
-      console.log('WebSocket closed:', event.code, event.reason);
-      setIsConnected(false);
-
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
 
+      wsRef.current = null;
+
       if (event.code !== 1000 && isAuthenticated) {
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('Attempting to reconnect...');
           connect();
         }, 3000);
       }
     };
 
     wsRef.current = ws;
-  }, [isAuthenticated]);
+  }, [handlePacket, isAuthenticated]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -101,116 +104,168 @@ export function WebSocketProvider({ children }) {
     setIsConnected(false);
   }, []);
 
-  const send = useCallback((packet) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const bytes = packet instanceof Packet ? packet.toBytes() : packet;
-      wsRef.current.send(bytes);
-      return true;
+  const requestServerList = useCallback(async () => {
+    try {
+      const response = await api.getServers();
+      if (response.status === 200 && Array.isArray(response.data)) {
+        setServers(response.data);
+        markConnected();
+        return response.data;
+      }
+
+      throw new Error(response.data?.message || 'Failed to load servers');
+    } catch (error) {
+      setLastError(error.message);
+      setIsConnected(false);
+      return [];
     }
-    console.warn('Cannot send: WebSocket not connected');
-    return false;
-  }, []);
+  }, [markConnected]);
 
-  const sendCommand = useCallback((command) => {
-    const packet = buildCommand(command);
-    return send(packet);
-  }, [send]);
-
-  const handlePacket = useCallback((packet) => {
-    const type = packet.getType();
-    const payload = packet.getPayload();
-
-    switch (type) {
-      case 'RESPONSE':
-        try {
-          const data = JSON.parse(payload);
-          if (Array.isArray(data)) {
-            setServers(data);
-          }
-        } catch {
-          toast.success(payload);
-        }
-        break;
-
-      case 'CONSOLE_LOG':
-        setConsoleLogs((prev) => {
-          const lines = payload.split('\n').filter((l) => l);
-          const serverId = extractServerId(payload);
-          if (serverId) {
-            return {
-              ...prev,
-              [serverId]: [...(prev[serverId] || []), ...lines],
-            };
-          }
-          return prev;
-        });
-        break;
-
-      case 'TELEMETRY':
-        try {
-          const serverId = extractServerId(payload);
-          if (serverId) {
-            setTelemetry((prev) => ({
-              ...prev,
-              [serverId]: JSON.parse(payload),
-            }));
-          }
-        } catch {
-          console.error('Invalid telemetry payload:', payload);
-        }
-        break;
-
-      case 'ERROR':
-        toast.error(payload);
-        break;
-
-      case 'HEARTBEAT':
-        break;
-
-      default:
-        console.log('Unknown packet type:', type);
+  const requestTelemetry = useCallback(async (serverId) => {
+    if (!serverId) {
+      return null;
     }
-  }, []);
 
-  const extractServerId = (payload) => {
-    const match = payload.match(/^(\d+):/);
-    return match ? match[1] : null;
-  };
+    try {
+      const response = await api.getTelemetry(serverId);
+      if (response.status !== 200 || !response.data) {
+        throw new Error(response.data?.message || 'Failed to load telemetry');
+      }
+
+      const nextTelemetry = mapTelemetry(response.data);
+      setTelemetry((prev) => ({
+        ...prev,
+        [serverId]: nextTelemetry,
+      }));
+
+      if (nextTelemetry.newLogLines.length > 0) {
+        setConsoleLogs((prev) => ({
+          ...prev,
+          [serverId]: mergeConsoleLines(prev[serverId] || [], nextTelemetry.newLogLines),
+        }));
+      }
+
+      markConnected();
+      return nextTelemetry;
+    } catch (error) {
+      setLastError(error.message);
+      return null;
+    }
+  }, [markConnected]);
+
+  const requestConsoleLogs = useCallback(async (serverId) => {
+    if (!serverId) {
+      return [];
+    }
+
+    try {
+      const response = await api.getConsoleLog(serverId);
+      if (response.status !== 200) {
+        throw new Error(response.data?.message || 'Failed to load console output');
+      }
+
+      const lines = Array.isArray(response.data?.lines) ? response.data.lines : [];
+      setConsoleLogs((prev) => ({
+        ...prev,
+        [serverId]: lines,
+      }));
+      markConnected();
+      return lines;
+    } catch (error) {
+      setLastError(error.message);
+      return [];
+    }
+  }, [markConnected]);
+
+  const sendConsoleCommand = useCallback(async (serverId, command) => {
+    if (!serverId || !command?.trim()) {
+      return { success: false, error: 'Missing server or command' };
+    }
+
+    try {
+      const response = await api.sendConsoleCommand(serverId, command.trim());
+      if (response.status !== 200) {
+        return { success: false, error: response.data?.message || 'Failed to send command' };
+      }
+
+      await requestConsoleLogs(serverId);
+      markConnected();
+      return { success: true, message: response.data?.message || 'Command sent' };
+    } catch (error) {
+      setLastError(error.message);
+      return { success: false, error: error.message };
+    }
+  }, [markConnected, requestConsoleLogs]);
 
   const subscribeToServer = useCallback((serverId) => {
-    sendCommand(`CMD_SUBSCRIBE ${serverId}`);
     setSubscribedServers((prev) => new Set([...prev, serverId]));
-  }, [sendCommand]);
+  }, []);
 
   const unsubscribeFromServer = useCallback((serverId) => {
-    sendCommand(`CMD_UNSUBSCRIBE ${serverId}`);
     setSubscribedServers((prev) => {
       const next = new Set(prev);
       next.delete(serverId);
       return next;
     });
-  }, [sendCommand]);
+  }, []);
 
-  const startServer = useCallback((serverId) => {
-    sendCommand(`CMD_START ${serverId}`);
-  }, [sendCommand]);
+  const startServer = useCallback(async (serverId) => {
+    const response = await api.startServer(serverId);
+    await requestServerList();
+    return response;
+  }, [requestServerList]);
 
-  const stopServer = useCallback((serverId) => {
-    sendCommand(`CMD_STOP ${serverId}`);
-  }, [sendCommand]);
+  const stopServer = useCallback(async (serverId) => {
+    const response = await api.stopServer(serverId);
+    await requestServerList();
+    return response;
+  }, [requestServerList]);
 
-  const restartServer = useCallback((serverId) => {
-    sendCommand(`CMD_START ${serverId}`);
-    setTimeout(() => sendCommand(`CMD_STOP ${serverId}`), 2000);
-  }, [sendCommand]);
+  const restartServer = useCallback(async (serverId) => {
+    const response = await api.restartServer(serverId);
+    await requestServerList();
+    return response;
+  }, [requestServerList]);
 
-  const requestServerList = useCallback(() => {
-    sendCommand('CMD_LIST');
-  }, [sendCommand]);
+  const sendCommand = useCallback(async (command) => {
+    const raw = command?.trim();
+    if (!raw) {
+      return false;
+    }
 
-  const requestTelemetry = useCallback((serverId) => {
-    sendCommand(`CMD_TELEMETRY ${serverId}`);
-  }, [sendCommand]);
+    if (raw === 'CMD_LIST') {
+      await requestServerList();
+      return true;
+    }
+
+    if (raw.startsWith('CMD_TELEMETRY ')) {
+      const serverId = Number(raw.split(/\s+/)[1]);
+      await requestTelemetry(serverId);
+      return true;
+    }
+
+    if (raw.startsWith('CMD_START ')) {
+      const serverId = Number(raw.split(/\s+/)[1]);
+      await startServer(serverId);
+      return true;
+    }
+
+    if (raw.startsWith('CMD_STOP ')) {
+      const serverId = Number(raw.split(/\s+/)[1]);
+      await stopServer(serverId);
+      return true;
+    }
+
+    if (raw.startsWith('CMD_CONSOLE ')) {
+      const parts = raw.split(' ');
+      const serverId = Number(parts[1]);
+      const consoleCommand = parts.slice(2).join(' ');
+      const result = await sendConsoleCommand(serverId, consoleCommand);
+      return result.success;
+    }
+
+    return false;
+  }, [requestServerList, requestTelemetry, restartServer, sendConsoleCommand, startServer, stopServer]);
 
   const clearConsoleLogs = useCallback((serverId) => {
     setConsoleLogs((prev) => ({
@@ -220,20 +275,22 @@ export function WebSocketProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      connect();
+    if (!isAuthenticated) {
+      disconnect();
+      setServers([]);
+      setTelemetry({});
+      setConsoleLogs({});
+      setSubscribedServers(new Set());
+      return;
     }
+
+    connect();
+    requestServerList();
 
     return () => {
       disconnect();
     };
-  }, [isAuthenticated, connect, disconnect]);
-
-  useEffect(() => {
-    if (isConnected) {
-      requestServerList();
-    }
-  }, [isConnected, requestServerList]);
+  }, [connect, disconnect, isAuthenticated, requestServerList]);
 
   const value = {
     isConnected,
@@ -245,6 +302,7 @@ export function WebSocketProvider({ children }) {
     connect,
     disconnect,
     sendCommand,
+    sendConsoleCommand,
     subscribeToServer,
     unsubscribeFromServer,
     startServer,
@@ -252,6 +310,7 @@ export function WebSocketProvider({ children }) {
     restartServer,
     requestServerList,
     requestTelemetry,
+    requestConsoleLogs,
     clearConsoleLogs,
   };
 
@@ -271,3 +330,51 @@ export function useWebSocket() {
 }
 
 export default WebSocketContext;
+
+function mapTelemetry(snapshot) {
+  const cpuUsage = round(snapshot.minecraftProcessCpuLoadPercent ?? snapshot.systemCpuLoadPercent ?? 0);
+  const memoryUsage = snapshot.systemMemoryTotalBytes
+    ? round((snapshot.systemMemoryUsedBytes / snapshot.systemMemoryTotalBytes) * 100)
+    : 0;
+  const diskUsedBytes = Math.max(0, (snapshot.driveTotalBytes ?? 0) - (snapshot.driveUsableBytes ?? 0));
+  const diskUsage = snapshot.driveTotalBytes
+    ? round((diskUsedBytes / snapshot.driveTotalBytes) * 100)
+    : 0;
+
+  return {
+    ...snapshot,
+    cpuUsage,
+    memoryUsage,
+    diskUsage,
+    cpuInfo: snapshot.operationalState,
+    memoryInfo: `${formatBytes(snapshot.systemMemoryUsedBytes)} / ${formatBytes(snapshot.systemMemoryTotalBytes)}`,
+    diskInfo: `${formatBytes(diskUsedBytes)} / ${formatBytes(snapshot.driveTotalBytes)}`,
+    newLogLines: Array.isArray(snapshot.newLogLines) ? snapshot.newLogLines : [],
+  };
+}
+
+function mergeConsoleLines(existing, incoming) {
+  const combined = [...existing, ...incoming];
+  return combined.slice(-250);
+}
+
+function round(value) {
+  return Math.round((value || 0) * 10) / 10;
+}
+
+function formatBytes(value) {
+  if (!value) {
+    return '0 B';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = value;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}

@@ -16,8 +16,9 @@ export function AuthProvider({ children }) {
     if (stored) {
       try {
         const session = JSON.parse(stored);
-        setUser(session.user);
-        setToken(session.token);
+        const normalized = normalizeSession(session);
+        setUser(normalized.user);
+        setToken(normalized.token);
       } catch {
         sessionStorage.removeItem(STORAGE_KEY);
       }
@@ -28,9 +29,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const saveSession = useCallback((sessionData) => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
-    setUser(sessionData.user);
-    setToken(sessionData.token);
+    const normalized = normalizeSession(sessionData);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    setUser(normalized.user);
+    setToken(normalized.token);
     setShowLogin(false);
   }, []);
 
@@ -87,3 +89,19 @@ export function useAuth() {
 }
 
 export default AuthContext;
+
+function normalizeSession(session) {
+  if (session?.user && session?.token) {
+    return session;
+  }
+
+  return {
+    token: session?.token ?? null,
+    user: session?.username
+      ? {
+          id: session.userId ?? null,
+          username: session.username,
+        }
+      : null,
+  };
+}

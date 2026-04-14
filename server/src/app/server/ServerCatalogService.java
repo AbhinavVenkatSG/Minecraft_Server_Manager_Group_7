@@ -22,6 +22,10 @@ public class ServerCatalogService {
         return support.getServer(serverId);
     }
 
+    public java.util.List<ManagedServer> listServers() {
+        return support.listServers();
+    }
+
     public Optional<ManagedServer> createServer(ServerRequest request, long ownerId) {
         if (request == null || support.isBlank(request.getName()) || support.isBlank(request.getHost()) || request.getPort() <= 0) {
             return Optional.empty();

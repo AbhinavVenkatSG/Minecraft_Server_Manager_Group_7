@@ -148,6 +148,11 @@ public class ApiServer {
     }
 
     private void handleServers(HttpExchange exchange, String method, String[] parts, String body) throws IOException {
+        if ("GET".equals(method) && parts.length == 2) {
+            send(exchange, 200, Responses.servers(serverCatalogService.listServers()));
+            return;
+        }
+
         if ("POST".equals(method) && parts.length == 2) {
             ServerRequest request = new ServerRequest(
                     Json.readString(body, "name"),
