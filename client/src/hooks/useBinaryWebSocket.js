@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BinaryPacket, PacketType } from '../utils/BinaryPacket';
+import {
+  parse,
+  buildCommand,
+  buildHeartbeat,
+  Packet,
+} from '../utils/BinaryPacket';
 
-const useBinaryWebSocket = (url, apiKey, onMessage) => {
+const API_KEY = 'minecraft_server_manager_key';
+
+const useBinaryWebSocket = (url, onMessage) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastError, setLastError] = useState(null);
   const wsRef = useRef(null);
@@ -13,7 +20,7 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
       return;
     }
 
-    const wsUrl = `${url}?apiKey=${apiKey}`;
+    const wsUrl = `${url}?apiKey=${API_KEY}`;
     const ws = new WebSocket(wsUrl);
 
     ws.binaryType = 'arraybuffer';
@@ -25,8 +32,7 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
 
       heartbeatIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
-          const heartbeat = BinaryPacket.buildHeartbeat();
-          ws.send(heartbeat.toBytes());
+          ws.send(buildHeartbeat().toBytes());
         }
       }, 30000);
     };
@@ -34,7 +40,7 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
     ws.onmessage = (event) => {
       try {
         const data = new Uint8Array(event.data);
-        const packet = BinaryPacket.parse(data);
+        const packet = parse(data);
 
         if (onMessage) {
           onMessage(packet);
@@ -66,7 +72,7 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
     };
 
     wsRef.current = ws;
-  }, [url, apiKey, onMessage]);
+  }, [url, onMessage]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -87,7 +93,7 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
 
   const send = useCallback((packet) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const bytes = packet instanceof BinaryPacket ? packet.toBytes() : packet;
+      const bytes = packet instanceof Packet ? packet.toBytes() : packet;
       wsRef.current.send(bytes);
       return true;
     }
@@ -96,22 +102,25 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
   }, []);
 
   const sendCommand = useCallback((command) => {
-    const packet = BinaryPacket.buildCommand(command);
+    const packet = buildCommand(command);
     return send(packet);
   }, [send]);
 
   const sendConsoleCommand = useCallback((command) => {
-    const packet = BinaryPacket.buildCommand(`CMD_CONSOLE ${command}`);
+    const packet = buildCommand(`CMD_CONSOLE ${command}`);
     return send(packet);
   }, [send]);
 
-  useEffect(() => {
+  const reconnect = useCallback(() => {
+    disconnect();
     connect();
+  }, [connect, disconnect]);
 
+  useEffect(() => {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [disconnect]);
 
   return {
     isConnected,
@@ -120,7 +129,7 @@ const useBinaryWebSocket = (url, apiKey, onMessage) => {
     sendCommand,
     sendConsoleCommand,
     disconnect,
-    reconnect: connect
+    reconnect,
   };
 };
 
