@@ -1,17 +1,100 @@
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 7%;
+    --foreground: 140 10% 85%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 140 10% 85%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 140 10% 85%;
+
+    --primary: 142 70% 45%;
+    --primary-foreground: 220 20% 7%;
+
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 140 10% 75%;
+
+    --muted: 220 15% 13%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 142 50% 30%;
+    --accent-foreground: 140 10% 90%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 15%;
+    --ring: 142 70% 45%;
+
+    --radius: 0.5rem;
+
+    --warning: 38 92% 50%;
+    --success: 142 70% 45%;
+    --info: 200 80% 50%;
+
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 140 10% 85%;
+    --sidebar-primary: 142 70% 45%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 140 10% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 142 70% 45%;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
 }
 
-#root {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #1a1a2e;
-  color: #fff;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-display);
+  }
+  code, pre, .font-mono {
+    font-family: var(--font-mono) !important;
+  }
 }
 
-h1 {
-  font-size: 2rem;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Glow effects */
+.glow-green {
+  box-shadow: 0 0 20px hsl(142 70% 45% / 0.15), 0 0 40px hsl(142 70% 45% / 0.05);
+}
+.glow-text {
+  text-shadow: 0 0 10px hsl(142 70% 45% / 0.5);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
