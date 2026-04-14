@@ -16,6 +16,7 @@ import infra.http.ApiServer;
 import infra.persistence.FileBackupStore;
 import infra.persistence.FileServerStore;
 import infra.persistence.FileUserStore;
+import infra.websocket.BinaryWebSocketServer;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -68,7 +69,11 @@ public class Main {
         );
         apiServer.start();
 
+        BinaryWebSocketServer webSocketServer = new BinaryWebSocketServer(port, serverSupport);
+        webSocketServer.start();
+
         System.out.println("Minecraft Server Manager API started on http://localhost:" + port);
+        System.out.println("Binary WebSocket Server started on ws://localhost:" + port + "/ws");
         System.out.println("Local CLI menu is available below.");
 
         ConsoleMenu consoleMenu = new ConsoleMenu(
@@ -85,6 +90,7 @@ public class Main {
             consoleMenu.run();
         } finally {
             apiServer.stop(0);
+            webSocketServer.stop();
             serverShutdownService.shutdown();
         }
     }
