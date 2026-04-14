@@ -1,15 +1,15 @@
 package app.server;
 
-import app.server.dto.ServerRequest;
-import domain.server.ManagedServer;
-import domain.server.ServerStatus;
-
 import java.io.Console;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+
+import app.server.dto.ServerRequest;
+import domain.server.ManagedServer;
+import domain.server.ServerStatus;
 
 public class ServerCatalogService {
     private final ServerSupport support;
