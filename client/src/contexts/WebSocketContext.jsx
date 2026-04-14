@@ -4,7 +4,7 @@ import { parse, buildHeartbeat } from '../utils/BinaryPacket';
 import { toast } from 'sonner';
 import api from '../services/api';
 
-const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws').replace(/\/$/, '');
+const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:9001/ws').replace(/\/$/, '');
 const API_KEY = 'minecraft_server_manager_key';
 
 const WebSocketContext = createContext(null);

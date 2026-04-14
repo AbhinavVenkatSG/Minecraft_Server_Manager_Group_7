@@ -86,13 +86,11 @@ public class BinaryWebSocketServer extends WebSocketServer {
         }
 
         clients.put(conn, new ClientSession());
-        System.out.println("WebSocket client connected: " + conn.getRemoteSocketAddress());
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         clients.remove(conn);
-        System.out.println("WebSocket client disconnected: " + conn.getRemoteSocketAddress() + " (code: " + code + ")");
     }
 
     @Override

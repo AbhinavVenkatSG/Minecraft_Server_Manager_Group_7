@@ -78,6 +78,7 @@ public class Main {
         System.out.println("Local CLI menu is available below.");
 
         ConsoleMenu consoleMenu = new ConsoleMenu(
+                authService,
                 serverCatalogService,
                 startServerService,
                 stopServerService,
@@ -91,22 +92,22 @@ public class Main {
             consoleMenu.run();
         } finally {
             apiServer.stop(0);
-            webSocketServer.stop();
+            webSocketServer.stop(0);
             serverShutdownService.shutdown();
         }
     }
 
     private static int resolveApiPort(String[] args) {
         if (args.length > 0) {
-            return parsePort(args[0], 8080);
+            return parsePort(args[0], 9000);
         }
 
         String envPort = System.getenv("APP_PORT");
         if (envPort != null && !envPort.isBlank()) {
-            return parsePort(envPort, 8080);
+            return parsePort(envPort, 9000);
         }
 
-        return 8080;
+        return 9000;
     }
 
     private static int resolveWebSocketPort(String[] args, int apiPort) {

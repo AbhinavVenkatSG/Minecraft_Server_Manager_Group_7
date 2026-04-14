@@ -1,5 +1,7 @@
 package main;
 
+import app.auth.AuthService;
+import app.auth.dto.RegisterRequest;
 import app.backup.BackupService;
 import app.server.RestartServerService;
 import app.server.ServerCatalogService;
@@ -20,6 +22,7 @@ import java.util.Scanner;
 public class ConsoleMenu {
     private static final double BYTES_PER_GIGABYTE = 1024d * 1024d * 1024d;
 
+    private final AuthService authService;
     private final ServerCatalogService serverCatalogService;
     private final StartServerService startServerService;
     private final StopServerService stopServerService;
@@ -31,6 +34,7 @@ public class ConsoleMenu {
     private final Scanner scanner;
 
     public ConsoleMenu(
+            AuthService authService,
             ServerCatalogService serverCatalogService,
             StartServerService startServerService,
             StopServerService stopServerService,
@@ -40,6 +44,7 @@ public class ConsoleMenu {
             ServerTelemetryService serverTelemetryService,
             BackupService backupService
     ) {
+        this.authService = authService;
         this.serverCatalogService = serverCatalogService;
         this.startServerService = startServerService;
         this.stopServerService = stopServerService;
@@ -77,7 +82,8 @@ public class ConsoleMenu {
                     case "15" -> changeMinecraftDirectory(server);
                     case "16" -> showTelemetryLog(server);
                     case "17" -> showServerSize(server);
-                    case "18" -> running = false;
+                    case "18" -> addUser();
+                    case "19" -> running = false;
                     default -> System.out.println("Invalid option.");
                 }
             } catch (Exception exception) {
@@ -114,7 +120,8 @@ public class ConsoleMenu {
         System.out.println("15. Change mc directory");
         System.out.println("16. View telemetry log");
         System.out.println("17. View server size (in gb)");
-        System.out.println("18. Exit");
+        System.out.println("18. Add user");
+        System.out.println("19. Exit");
         System.out.println();
     }
 
@@ -240,6 +247,25 @@ public class ConsoleMenu {
     private void showServerSize(ManagedServer server) {
         TelemetrySnapshot telemetry = serverTelemetryService.getTelemetry(server.getId());
         System.out.printf("Server size: %.2f GB%n", telemetry.getMinecraftDirectorySizeBytes() / BYTES_PER_GIGABYTE);
+    }
+
+    private void addUser() {
+        String username = readLine("New username: ");
+        if (username.isBlank()) {
+            System.out.println("Username cannot be blank.");
+            return;
+        }
+        String password = readLine("New password: ");
+        if (password.isBlank()) {
+            System.out.println("Password cannot be blank.");
+            return;
+        }
+        boolean created = authService.register(new RegisterRequest(username.trim(), password)).isPresent();
+        if (created) {
+            System.out.println("User '" + username.trim() + "' created.");
+        } else {
+            System.out.println("Failed to create user. Username may already exist.");
+        }
     }
 
     private ManagedServer requirePrimaryServer() {
