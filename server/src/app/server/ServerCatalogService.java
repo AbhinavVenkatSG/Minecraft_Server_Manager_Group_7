@@ -3,7 +3,6 @@ package app.server;
 import java.io.Console;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
@@ -19,16 +18,15 @@ public class ServerCatalogService {
         this.support.normalizePersistedState();
     }
 
-    public List<ManagedServer> listServers() {
-        return support.listServers();
-    }
-
     public Optional<ManagedServer> getServer(long serverId) {
         return support.getServer(serverId);
     }
 
     public Optional<ManagedServer> createServer(ServerRequest request, long ownerId) {
         if (request == null || support.isBlank(request.getName()) || support.isBlank(request.getHost()) || request.getPort() <= 0) {
+            return Optional.empty();
+        }
+        if (!support.listServers().isEmpty()) {
             return Optional.empty();
         }
 

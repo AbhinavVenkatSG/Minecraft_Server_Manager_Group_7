@@ -38,6 +38,7 @@ public class ServerRuntimeState {
         private final Deque<String> consoleLines = new ArrayDeque<>();
         private volatile long lastCpuSampleNanos;
         private volatile long lastCpuDurationNanos;
+        private volatile long lastCpuSampledPid;
         private volatile boolean manuallyStopping;
         private volatile Thread outputThread;
 
@@ -74,6 +75,14 @@ public class ServerRuntimeState {
 
         public void setLastCpuDurationNanos(long lastCpuDurationNanos) {
             this.lastCpuDurationNanos = lastCpuDurationNanos;
+        }
+
+        public long getLastCpuSampledPid() {
+            return lastCpuSampledPid;
+        }
+
+        public void setLastCpuSampledPid(long lastCpuSampledPid) {
+            this.lastCpuSampledPid = lastCpuSampledPid;
         }
 
         public boolean isManuallyStopping() {

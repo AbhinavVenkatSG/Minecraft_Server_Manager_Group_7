@@ -12,8 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.LinkedHashSet;
+import java.util.OptionalDouble;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -223,35 +225,78 @@ public class ServerSupport {
         }
     }
 
-    public double readProcessCpuLoad(ServerRuntimeState.RuntimeContext context) {
-        if (context.getProcess() == null) {
-            return 0.0d;
+    public Optional<ProcessHandle> resolveTelemetryProcess(ServerRuntimeState.RuntimeContext context) {
+        if (context == null || context.getProcess() == null) {
+            return Optional.empty();
         }
 
-        Optional<Duration> cpuDuration = context.getProcess().info().totalCpuDuration();
+        ProcessHandle root = context.getProcess().toHandle();
+        if (!root.isAlive()) {
+            return Optional.empty();
+        }
+
+        List<ProcessHandle> liveDescendants = root.descendants()
+                .filter(ProcessHandle::isAlive)
+                .sorted(Comparator.comparingLong(this::telemetryProcessPriority).reversed())
+                .toList();
+        if (!liveDescendants.isEmpty()) {
+            return Optional.of(liveDescendants.get(0));
+        }
+
+        return Optional.of(root);
+    }
+
+    public OptionalDouble readProcessCpuLoad(ServerRuntimeState.RuntimeContext context) {
+        if (context.getProcess() == null) {
+            return OptionalDouble.empty();
+        }
+
+        Optional<ProcessHandle> telemetryProcess = resolveTelemetryProcess(context);
+        if (telemetryProcess.isEmpty()) {
+            return OptionalDouble.empty();
+        }
+
+        ProcessHandle processHandle = telemetryProcess.get();
+        Optional<Duration> cpuDuration = processHandle.info().totalCpuDuration();
         if (cpuDuration.isEmpty()) {
-            return 0.0d;
+            return OptionalDouble.empty();
         }
 
         long now = System.nanoTime();
+        long pid = processHandle.pid();
         long cpuNanos = cpuDuration.get().toNanos();
-        if (context.getLastCpuSampleNanos() == 0L) {
+        if (context.getLastCpuSampleNanos() == 0L || context.getLastCpuSampledPid() != pid) {
             context.setLastCpuSampleNanos(now);
             context.setLastCpuDurationNanos(cpuNanos);
-            return 0.0d;
+            context.setLastCpuSampledPid(pid);
+            return OptionalDouble.empty();
         }
 
         long elapsedWallNanos = now - context.getLastCpuSampleNanos();
         long elapsedCpuNanos = cpuNanos - context.getLastCpuDurationNanos();
         context.setLastCpuSampleNanos(now);
         context.setLastCpuDurationNanos(cpuNanos);
+        context.setLastCpuSampledPid(pid);
 
-        if (elapsedWallNanos <= 0L) {
-            return 0.0d;
+        if (elapsedWallNanos <= 0L || elapsedCpuNanos < 0L) {
+            return OptionalDouble.empty();
         }
 
         double usage = (elapsedCpuNanos * 100.0d) / (elapsedWallNanos * Runtime.getRuntime().availableProcessors());
-        return Math.max(0.0d, usage);
+        if (Double.isNaN(usage) || Double.isInfinite(usage)) {
+            return OptionalDouble.empty();
+        }
+
+        return OptionalDouble.of(Math.max(0.0d, usage));
+    }
+
+    public long readProcessMemoryBytes(ServerRuntimeState.RuntimeContext context) {
+        Optional<ProcessHandle> telemetryProcess = resolveTelemetryProcess(context);
+        if (telemetryProcess.isEmpty()) {
+            return 0L;
+        }
+
+        return readProcessMemoryBytes(telemetryProcess.get().pid());
     }
 
     public long readProcessMemoryBytes(long pid) {
@@ -368,6 +413,16 @@ public class ServerSupport {
 
     public double round(double value) {
         return Math.round(value * 100.0d) / 100.0d;
+    }
+
+    private long telemetryProcessPriority(ProcessHandle processHandle) {
+        long score = 0L;
+        String command = processHandle.info().command().orElse("").toLowerCase();
+        if (command.endsWith("java.exe") || command.endsWith("javaw.exe") || command.endsWith("/java") || command.endsWith("/javaw")) {
+            score += 1_000_000L;
+        }
+
+        return score + processHandle.pid();
     }
 
     private int estimateLineIndex(List<String> lines, long byteOffset) {

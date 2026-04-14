@@ -2,354 +2,352 @@ package infra.http;
 
 import app.auth.AuthService;
 import app.backup.BackupService;
-import app.server.*;
-import app.server.dto.ServerRequest;
+import app.server.RestartServerService;
+import app.server.ServerCatalogService;
+import app.server.ServerConsoleService;
+import app.server.ServerFileService;
+import app.server.ServerRuntimeState;
+import app.server.ServerSupport;
+import app.server.ServerTelemetryService;
+import app.server.StartServerService;
+import app.server.StopServerService;
 import infra.persistence.InMemoryBackupStore;
 import infra.persistence.InMemoryServerStore;
 import infra.persistence.InMemoryUserStore;
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import com.sun.net.httpserver.HttpServer;
+import java.nio.file.StandardOpenOption;
+import java.time.Duration;
+import java.util.function.BooleanSupplier;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class ApiServerTest {
 
-    private static HttpServer httpServer;
-    private static HttpClient httpClient;
-    private static InMemoryUserStore userStore;
-    private static InMemoryServerStore serverStore;
-    private static InMemoryBackupStore backupStore;
-    private static String tempMcDir;
-    private int testPort;
+    private HttpClient httpClient;
+    private InMemoryServerStore serverStore;
+    private ServerRuntimeState runtimeState;
+    private ServerCatalogService serverCatalogService;
+    private StartServerService startServerService;
+    private StopServerService stopServerService;
+    private ServerTelemetryService serverTelemetryService;
+    private ApiServer apiServer;
+    private Path tempMcDir;
     private String baseUrl;
 
     @BeforeEach
-    void setUp() throws IOException, InterruptedException {
-        if (httpServer != null) {
-            httpServer.stop(0);
-            Thread.sleep(100);
-        }
+    void setUp() throws Exception {
+        tempMcDir = createFakeMinecraftDirectory(Files.createTempDirectory("mc_test").resolve("server"));
 
-        Path tempDir = Files.createTempDirectory("mc_test");
-        tempMcDir = tempDir.resolve("server").toString();
-        Files.createDirectories(Path.of(tempMcDir));
-        Files.writeString(Path.of(tempMcDir).resolve("server.properties"), "server-port=25565\n");
-
-        userStore = new InMemoryUserStore();
+        InMemoryUserStore userStore = new InMemoryUserStore();
         serverStore = new InMemoryServerStore();
-        backupStore = new InMemoryBackupStore();
-        testPort = 18080 + (int)(Math.random() * 10000);
+        InMemoryBackupStore backupStore = new InMemoryBackupStore();
+        runtimeState = new ServerRuntimeState();
+        int testPort = findFreePort();
 
-        ServerSupport serverSupport = new ServerSupport(serverStore, new ServerRuntimeState());
-        ServerCatalogService serverCatalogService = new ServerCatalogService(serverSupport);
-        StartServerService startServerService = new StartServerService(serverSupport);
-        StopServerService stopServerService = new StopServerService(serverSupport);
+        ServerSupport serverSupport = new ServerSupport(serverStore, runtimeState);
+        serverCatalogService = new ServerCatalogService(serverSupport);
+        startServerService = new StartServerService(serverSupport);
+        stopServerService = new StopServerService(serverSupport);
         RestartServerService restartServerService = new RestartServerService(
-            serverCatalogService, startServerService, stopServerService
+                serverCatalogService,
+                startServerService,
+                stopServerService
         );
         ServerConsoleService serverConsoleService = new ServerConsoleService(serverSupport);
         ServerFileService serverFileService = new ServerFileService(serverSupport);
-        ServerTelemetryService serverTelemetryService = new ServerTelemetryService(serverSupport);
+        serverTelemetryService = new ServerTelemetryService(serverSupport);
 
-        httpServer = HttpServer.create(new InetSocketAddress(testPort), 0);
-        httpServer.createContext("/api", new TestApiHandler(
-            new AuthService(userStore),
-            serverCatalogService,
-            startServerService,
-            stopServerService,
-            restartServerService,
-            serverConsoleService,
-            serverFileService,
-            serverTelemetryService,
-            new BackupService(backupStore, serverStore),
-            tempMcDir
-        ));
-        httpServer.setExecutor(null);
-        httpServer.start();
+        apiServer = new ApiServer(
+                testPort,
+                new AuthService(userStore),
+                serverCatalogService,
+                startServerService,
+                stopServerService,
+                restartServerService,
+                serverConsoleService,
+                serverFileService,
+                serverTelemetryService,
+                new BackupService(backupStore, serverStore)
+        );
+        apiServer.start();
 
         httpClient = HttpClient.newHttpClient();
         baseUrl = "http://localhost:" + testPort;
-
-        Thread.sleep(100);
     }
 
-    private String sendRequest(String method, String path, String body) throws IOException, InterruptedException {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + path))
-            .method(method, HttpRequest.BodyPublishers.ofString(body != null ? body : ""));
+    @AfterEach
+    void tearDown() {
+        try {
+            if (serverStore.findById(1L).isPresent() && !runtimeState.getRuntimeContexts().isEmpty()) {
+                stopServerService.stopServer(1L);
+            }
+        } catch (Exception ignored) {
+        }
 
+        if (apiServer != null) {
+            apiServer.stop(0);
+        }
+        if (serverTelemetryService != null) {
+            serverTelemetryService.shutdown();
+        }
+    }
+
+    @Test
+    void authEndpoints_registerDuplicateAndLoginBehaveCorrectly() throws Exception {
+        String body = "{\"username\":\"testuser\",\"password\":\"password123\"}";
+
+        HttpResponse<String> firstRegister = sendRequest("POST", "/api/auth/register", body);
+        HttpResponse<String> duplicateRegister = sendRequest("POST", "/api/auth/register", body);
+        HttpResponse<String> login = sendRequest("POST", "/api/auth/login", body);
+        HttpResponse<String> wrongPassword = sendRequest(
+                "POST",
+                "/api/auth/login",
+                "{\"username\":\"testuser\",\"password\":\"wrongpassword\"}"
+        );
+
+        assertEquals(200, firstRegister.statusCode());
+        assertEquals("testuser", Json.readString(firstRegister.body(), "username"));
+        assertFalse(Json.readString(firstRegister.body(), "token").isBlank());
+        assertEquals(400, duplicateRegister.statusCode());
+        assertEquals(200, login.statusCode());
+        assertEquals("testuser", Json.readString(login.body(), "username"));
+        assertEquals(401, wrongPassword.statusCode());
+    }
+
+    @Test
+    void serverRoutes_coverCrudAndEditableFilesWithoutRunningMinecraft() throws Exception {
+        Path alternateDirectory = createFakeMinecraftDirectory(tempMcDir.getParent().resolve("alternate"));
+        HttpResponse<String> createResponse = sendRequest(
+                "POST",
+                "/api/servers",
+                serverRequestBody("ManagerServer", tempMcDir)
+        );
+        long serverId = Json.readInt(createResponse.body(), "id", -1);
+
+        HttpResponse<String> getResponse = sendRequest("GET", "/api/servers/" + serverId, null);
+        HttpResponse<String> getDirectory = sendRequest("GET", "/api/servers/" + serverId + "/directory", null);
+        HttpResponse<String> duplicateCreate = sendRequest(
+                "POST",
+                "/api/servers",
+                serverRequestBody("SecondServer", alternateDirectory)
+        );
+        HttpResponse<String> updateDirectory = sendRequest(
+                "POST",
+                "/api/servers/" + serverId + "/directory",
+                "{\"path\":" + Json.quote(alternateDirectory.toString()) + "}"
+        );
+        HttpResponse<String> readStartParameters = sendRequest("GET", "/api/servers/" + serverId + "/start-parameters", null);
+        HttpResponse<String> updateStartParameters = sendRequest(
+                "POST",
+                "/api/servers/" + serverId + "/start-parameters",
+                "{\"content\":\"-Xms512M -Xmx1536M -Dcodex.api=true\"}"
+        );
+        HttpResponse<String> readUpdatedStartParameters = sendRequest("GET", "/api/servers/" + serverId + "/start-parameters", null);
+        HttpResponse<String> readProperties = sendRequest("GET", "/api/servers/" + serverId + "/files/server-properties", null);
+        HttpResponse<String> updateProperties = sendRequest(
+                "POST",
+                "/api/servers/" + serverId + "/files/server-properties",
+                "{\"content\":\"motd=Updated by ApiServerTest\\nwhite-list=true\\n\"}"
+        );
+        HttpResponse<String> readWhitelist = sendRequest("GET", "/api/servers/" + serverId + "/files/whitelist", null);
+        HttpResponse<String> updateWhitelist = sendRequest(
+                "POST",
+                "/api/servers/" + serverId + "/files/whitelist",
+                "{\"content\":\"[\\n  {\\\"uuid\\\":\\\"1\\\",\\\"name\\\":\\\"Codex\\\"}\\n]\\n\"}"
+        );
+
+        assertEquals(201, createResponse.statusCode());
+        assertEquals("ManagerServer", Json.readString(createResponse.body(), "name"));
+        assertEquals(1L, serverId);
+        assertEquals(200, getResponse.statusCode());
+        assertEquals("ManagerServer", Json.readString(getResponse.body(), "name"));
+        assertEquals(200, getDirectory.statusCode());
+        assertEquals(tempMcDir.toString(), Json.readString(getDirectory.body(), "minecraftDirectory"));
+        assertEquals(400, duplicateCreate.statusCode());
+        assertEquals(200, updateDirectory.statusCode());
+        assertEquals(alternateDirectory.toString(), Json.readString(updateDirectory.body(), "minecraftDirectory"));
+        assertEquals(200, readStartParameters.statusCode());
+        assertTrue(Json.readString(readStartParameters.body(), "content").contains("-Xmx2G"));
+        assertEquals(200, updateStartParameters.statusCode());
+        assertEquals("-Xms512M -Xmx1536M -Dcodex.api=true", Json.readString(readUpdatedStartParameters.body(), "content"));
+        assertEquals(200, readProperties.statusCode());
+        assertTrue(Json.readString(readProperties.body(), "content").contains("server-port=25565"));
+        assertEquals(200, updateProperties.statusCode());
+        assertTrue(Files.readString(alternateDirectory.resolve("server.properties")).contains("Updated by ApiServerTest"));
+        assertEquals(200, readWhitelist.statusCode());
+        assertTrue(Json.readString(readWhitelist.body(), "content").contains("\"Steve\""));
+        assertEquals(200, updateWhitelist.statusCode());
+        assertTrue(Files.readString(alternateDirectory.resolve("whitelist.json")).contains("\"Codex\""));
+    }
+
+    @Test
+    void serverRoutes_coverRunningServerTelemetryConsoleBackupsAndCurrentAuthBehavior() throws Exception {
+        HttpResponse<String> createResponse = sendRequest(
+                "POST",
+                "/api/servers",
+                serverRequestBody("RunningServer", tempMcDir)
+        );
+        long serverId = Json.readInt(createResponse.body(), "id", -1);
+        Path latestLog = tempMcDir.resolve("logs").resolve("latest.log");
+
+        HttpResponse<String> startResponse = sendRequest("POST", "/api/servers/" + serverId + "/start", "{}");
+
+        assertEquals(200, startResponse.statusCode());
+        waitUntil(
+                () -> getConsoleLogBody(serverId).contains("Done (0.100s)!"),
+                Duration.ofSeconds(10),
+                "Fake server never became ready."
+        );
+
+        Files.writeString(
+                latestLog,
+                """
+                [12:00:00] [Server thread/INFO]: Alex joined the game
+                [12:01:00] [Server thread/INFO]: Steve joined the game
+                [12:02:00] [Server thread/INFO]: Alex left the game
+                """,
+                StandardOpenOption.APPEND
+        );
+
+        HttpResponse<String> consoleResponse = sendRequest(
+                "POST",
+                "/api/servers/" + serverId + "/console",
+                "{\"command\":\"list\"}"
+        );
+
+        assertEquals(200, consoleResponse.statusCode());
+        waitUntil(
+                () -> getConsoleLogBody(serverId).contains("There are 0 of a max of 20 players online:"),
+                Duration.ofSeconds(5),
+                "Console output never included the list command response."
+        );
+
+        HttpResponse<String> telemetryResponse = sendRequest("GET", "/api/servers/" + serverId + "/telemetry", null);
+        HttpResponse<String> playersResponse = sendRequest("GET", "/api/servers/" + serverId + "/players", null);
+        HttpResponse<String> stopResponse = sendRequest("POST", "/api/servers/" + serverId + "/stop", "{}");
+        HttpResponse<String> backupsBeforeCreate = sendRequest("GET", "/api/servers/" + serverId + "/backups", null);
+        HttpResponse<String> createBackup = sendRequest("POST", "/api/servers/" + serverId + "/backups", "{}");
+        HttpResponse<String> backupsAfterCreate = sendRequest("GET", "/api/servers/" + serverId + "/backups", null);
+        int backupId = Json.readInt(backupsAfterCreate.body(), "id", -1);
+        HttpResponse<byte[]> downloadBackup = sendBinaryRequest("GET", "/api/backups/" + backupId + "/download");
+
+        assertEquals(200, telemetryResponse.statusCode());
+        assertEquals("RUNNING", Json.readString(telemetryResponse.body(), "operationalState"));
+        assertEquals("1G", Json.readString(telemetryResponse.body(), "jvmInitialRam"));
+        assertEquals("2G", Json.readString(telemetryResponse.body(), "jvmAllocatedRam"));
+        assertFalse(Json.readString(telemetryResponse.body(), "packetBase64").isBlank());
+        assertEquals(200, playersResponse.statusCode());
+        assertTrue(playersResponse.body().contains("\"Steve\""));
+        assertFalse(playersResponse.body().contains("\"Alex\""));
+        assertEquals(200, stopResponse.statusCode());
+        assertEquals("[]", backupsBeforeCreate.body());
+        assertEquals(201, createBackup.statusCode());
+        assertTrue(Json.readString(createBackup.body(), "filename").endsWith(".zip"));
+        assertTrue(backupsAfterCreate.body().contains("\"serverId\":1"));
+        assertTrue(backupId > 0);
+        assertEquals(200, downloadBackup.statusCode());
+        assertTrue(downloadBackup.body().length > 1);
+        assertEquals('P', (char) downloadBackup.body()[0]);
+        assertEquals('K', (char) downloadBackup.body()[1]);
+    }
+
+    @Test
+    void invalidAndUnknownRoutes_returnExpectedStatusCodes() throws Exception {
+        HttpResponse<String> removedListRoute = sendRequest("GET", "/api/servers", null);
+        HttpResponse<String> invalidServerId = sendRequest("GET", "/api/servers/not-a-number", null);
+        HttpResponse<String> missingServer = sendRequest("GET", "/api/servers/999", null);
+        HttpResponse<String> unknownRoute = sendRequest("GET", "/api/unknown", null);
+
+        assertEquals(404, removedListRoute.statusCode());
+        assertEquals(400, invalidServerId.statusCode());
+        assertEquals(404, missingServer.statusCode());
+        assertEquals(404, unknownRoute.statusCode());
+    }
+
+    private HttpResponse<String> sendRequest(String method, String path, String body) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .method(method, HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
         if (body != null && !body.isEmpty()) {
             builder.header("Content-Type", "application/json");
         }
-
-        HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        return response.statusCode() + ":" + response.body();
+        return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    @Test
-    void registerEndpoint_withValidRequest_returns200() throws Exception {
-        String body = "{\"username\":\"testuser\",\"password\":\"password123\"}";
-        String response = sendRequest("POST", "/api/auth/register", body);
-
-        assertTrue(response.startsWith("200:"));
-        assertTrue(response.contains("\"username\":\"testuser\""));
-        assertTrue(response.contains("\"token\""));
+    private HttpResponse<byte[]> sendBinaryRequest(String method, String path) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .method(method, HttpRequest.BodyPublishers.noBody())
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
     }
 
-    @Test
-    void registerEndpoint_withDuplicateUser_returns400() throws Exception {
-        String body = "{\"username\":\"testuser\",\"password\":\"password123\"}";
-        sendRequest("POST", "/api/auth/register", body);
-        String response = sendRequest("POST", "/api/auth/register", body);
-
-        assertTrue(response.startsWith("400:"));
-    }
-
-    @Test
-    void loginEndpoint_withValidCredentials_returns200() throws Exception {
-        sendRequest("POST", "/api/auth/register", "{\"username\":\"testuser\",\"password\":\"password123\"}");
-        String response = sendRequest("POST", "/api/auth/login", "{\"username\":\"testuser\",\"password\":\"password123\"}");
-
-        assertTrue(response.startsWith("200:"));
-        assertTrue(response.contains("\"username\":\"testuser\""));
-    }
-
-    @Test
-    void loginEndpoint_withInvalidPassword_returns401() throws Exception {
-        sendRequest("POST", "/api/auth/register", "{\"username\":\"testuser\",\"password\":\"password123\"}");
-        String response = sendRequest("POST", "/api/auth/login", "{\"username\":\"testuser\",\"password\":\"wrongpassword\"}");
-
-        assertTrue(response.startsWith("401:"));
-    }
-
-    @Test
-    void listServers_withNoServers_returnsEmptyArray() throws Exception {
-        String response = sendRequest("GET", "/api/servers", null);
-
-        assertTrue(response.startsWith("200:"));
-        assertTrue(response.contains("[]"));
-    }
-
-    @Test
-    void createServer_withValidRequest_returns201() throws Exception {
-        String body = "{\"name\":\"MyServer\",\"host\":\"localhost\",\"port\":25565,\"minecraftDirectory\":\"" + tempMcDir + "\"}";
-        String response = sendRequest("POST", "/api/servers", body);
-
-        assertTrue(response.startsWith("201:"), "Expected 201 but got: " + response);
-        assertTrue(response.contains("\"name\":\"MyServer\""));
-        assertTrue(response.contains("\"status\":\"STOPPED\""));
-    }
-
-    @Test
-    void getServer_withExistingId_returns200() throws Exception {
-        String body = "{\"name\":\"MyServer\",\"host\":\"localhost\",\"port\":25565,\"minecraftDirectory\":\"" + tempMcDir + "\"}";
-        sendRequest("POST", "/api/servers", body);
-        String response = sendRequest("GET", "/api/servers/1", null);
-
-        assertTrue(response.startsWith("200:"), "Expected 200 but got: " + response);
-        assertTrue(response.contains("\"name\":\"MyServer\""));
-    }
-
-    @Test
-    void getServer_withNonExistingId_returns404() throws Exception {
-        String response = sendRequest("GET", "/api/servers/999", null);
-
-        assertTrue(response.startsWith("404:"));
-    }
-
-    @Test
-    void unknownRoute_returns404() throws Exception {
-        String response = sendRequest("GET", "/api/unknown", null);
-
-        assertTrue(response.startsWith("404:"));
-    }
-
-    static class TestApiHandler implements com.sun.net.httpserver.HttpHandler {
-        private final AuthService authService;
-        private final ServerCatalogService serverCatalogService;
-        private final StartServerService startServerService;
-        private final StopServerService stopServerService;
-        private final RestartServerService restartServerService;
-        private final ServerConsoleService serverConsoleService;
-        private final ServerFileService serverFileService;
-        private final ServerTelemetryService serverTelemetryService;
-        private final BackupService backupService;
-        private final String minecraftDirectory;
-
-        TestApiHandler(
-            AuthService authService,
-            ServerCatalogService serverCatalogService,
-            StartServerService startServerService,
-            StopServerService stopServerService,
-            RestartServerService restartServerService,
-            ServerConsoleService serverConsoleService,
-            ServerFileService serverFileService,
-            ServerTelemetryService serverTelemetryService,
-            BackupService backupService,
-            String minecraftDirectory
-        ) {
-            this.authService = authService;
-            this.serverCatalogService = serverCatalogService;
-            this.startServerService = startServerService;
-            this.stopServerService = stopServerService;
-            this.restartServerService = restartServerService;
-            this.serverConsoleService = serverConsoleService;
-            this.serverFileService = serverFileService;
-            this.serverTelemetryService = serverTelemetryService;
-            this.backupService = backupService;
-            this.minecraftDirectory = minecraftDirectory;
+    private String getConsoleLogBody(long serverId) {
+        try {
+            return sendRequest("GET", "/api/servers/" + serverId + "/console-log", null).body();
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
         }
+    }
 
-        @Override
-        public void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
-            addCorsHeaders(exchange);
+    private String serverRequestBody(String name, Path minecraftDirectory) {
+        return "{"
+                + "\"name\":" + Json.quote(name) + ","
+                + "\"host\":\"localhost\","
+                + "\"port\":25565,"
+                + "\"minecraftDirectory\":" + Json.quote(minecraftDirectory.toString())
+                + "}";
+    }
 
-            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
-                send(exchange, 204, "");
+    private Path createFakeMinecraftDirectory(Path directory) throws IOException {
+        Files.createDirectories(directory.resolve("logs"));
+        Files.createDirectories(directory.resolve("world"));
+        Files.writeString(directory.resolve("server.properties"), "server-port=25565\nmotd=Fake server\n");
+        Files.writeString(directory.resolve("whitelist.json"), "[\n  {\"uuid\":\"abc\",\"name\":\"Steve\"}\n]\n");
+        Files.writeString(directory.resolve("world").resolve("level.dat"), "fake-world-data");
+        Files.writeString(directory.resolve("logs").resolve("latest.log"), "");
+        Files.writeString(directory.resolve("start.bat"), fakeStartScript());
+        return directory;
+    }
+
+    private String fakeStartScript() {
+        return "@echo off\r\n"
+                + "REM java -Xms1G -Xmx2G -jar server.jar nogui\r\n"
+                + "java -Xms1G -Xmx2G -cp \"" + compiledTestClasspath() + "\" app.server.FakeMinecraftProcessMain\r\n";
+    }
+
+    private String compiledTestClasspath() {
+        return Path.of("server", "out").toAbsolutePath().normalize().toString();
+    }
+
+    private int findFreePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
+    private void waitUntil(BooleanSupplier condition, Duration timeout, String failureMessage) throws InterruptedException {
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (condition.getAsBoolean()) {
                 return;
             }
-
-            String method = exchange.getRequestMethod().toUpperCase();
-            String path = exchange.getRequestURI().getPath();
-            String body = readBody(exchange);
-            String[] parts = path.substring(1).split("/");
-
-            try {
-                if (parts.length >= 3 && "api".equals(parts[0]) && "auth".equals(parts[1])) {
-                    handleAuth(exchange, method, parts, body);
-                    return;
-                }
-
-                if (parts.length >= 2 && "api".equals(parts[0]) && "servers".equals(parts[1])) {
-                    handleServers(exchange, method, parts, body);
-                    return;
-                }
-
-                send(exchange, 404, Responses.message("Route not found."));
-            } catch (Exception exception) {
-                send(exchange, 500, Responses.message("Server error: " + exception.getMessage()));
-            }
+            Thread.sleep(200L);
         }
-
-        private void handleAuth(com.sun.net.httpserver.HttpExchange exchange, String method, String[] parts, String body) throws IOException {
-            if ("POST".equals(method) && parts.length == 3 && "login".equals(parts[2])) {
-                var response = authService.login(new app.auth.dto.LoginRequest(
-                    Json.readString(body, "username"),
-                    Json.readString(body, "password")
-                ));
-                if (response.isPresent()) {
-                    send(exchange, 200, Responses.login(response.get()));
-                } else {
-                    send(exchange, 401, Responses.message("Invalid username or password."));
-                }
-                return;
-            }
-
-            if ("POST".equals(method) && parts.length == 3 && "register".equals(parts[2])) {
-                var response = authService.register(new app.auth.dto.RegisterRequest(
-                    Json.readString(body, "username"),
-                    Json.readString(body, "password")
-                ));
-                if (response.isPresent()) {
-                    send(exchange, 200, Responses.login(response.get()));
-                } else {
-                    send(exchange, 400, Responses.message("Could not register user."));
-                }
-                return;
-            }
-
-            send(exchange, 404, Responses.message("Auth route not found."));
-        }
-
-        private void handleServers(com.sun.net.httpserver.HttpExchange exchange, String method, String[] parts, String body) throws IOException {
-            if ("GET".equals(method) && parts.length == 2) {
-                send(exchange, 200, Responses.servers(serverCatalogService.listServers()));
-                return;
-            }
-
-            if ("POST".equals(method) && parts.length == 2) {
-                var request = new ServerRequest(
-                    Json.readString(body, "name"),
-                    Json.readString(body, "host"),
-                    Json.readInt(body, "port", 25565),
-                    Json.readString(body, "rconPassword"),
-                    Json.readInt(body, "rconPort", 25575),
-                    Json.readString(body, "serverProperties"),
-                    Json.readString(body, "backupPath"),
-                    minecraftDirectory
-                );
-
-                var createdServer = serverCatalogService.createServer(request, 1L);
-                if (createdServer.isPresent()) {
-                    send(exchange, 201, Responses.server(createdServer.get()));
-                } else {
-                    send(exchange, 400, Responses.message("Invalid server request."));
-                }
-                return;
-            }
-
-            if (parts.length < 3) {
-                send(exchange, 404, Responses.message("Server route not found."));
-                return;
-            }
-
-            long serverId = parseId(parts[2]);
-            if (serverId < 0) {
-                send(exchange, 400, Responses.message("Invalid server id."));
-                return;
-            }
-
-            if ("GET".equals(method) && parts.length == 3) {
-                var server = serverCatalogService.getServer(serverId);
-                if (server.isPresent()) {
-                    send(exchange, 200, Responses.server(server.get()));
-                } else {
-                    send(exchange, 404, Responses.message("Server not found."));
-                }
-                return;
-            }
-
-            send(exchange, 404, Responses.message("Server route not found."));
-        }
-
-        private long parseId(String rawValue) {
-            try {
-                return Long.parseLong(rawValue);
-            } catch (NumberFormatException exception) {
-                return -1;
-            }
-        }
-
-        private String readBody(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
-            try (var inputStream = exchange.getRequestBody()) {
-                return new String(inputStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-            }
-        }
-
-        private void addCorsHeaders(com.sun.net.httpserver.HttpExchange exchange) {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-            exchange.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
-        }
-
-        private void send(com.sun.net.httpserver.HttpExchange exchange, int statusCode, String body) throws IOException {
-            byte[] responseBytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(statusCode, responseBytes.length);
-            try (var outputStream = exchange.getResponseBody()) {
-                outputStream.write(responseBytes);
-            }
-        }
+        fail(failureMessage);
     }
 }

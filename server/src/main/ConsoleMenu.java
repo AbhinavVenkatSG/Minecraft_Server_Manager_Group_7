@@ -152,8 +152,8 @@ public class ConsoleMenu {
 
     private void showCpuUsage(ManagedServer server) {
         TelemetrySnapshot telemetry = serverTelemetryService.getTelemetry(server.getId());
-        System.out.println("Minecraft CPU usage: " + telemetry.getMinecraftProcessCpuLoadPercent() + "%");
-        System.out.println("System CPU usage: " + telemetry.getSystemCpuLoadPercent() + "%");
+        System.out.println("Minecraft CPU usage: " + formatCpuLoad(telemetry.getMinecraftProcessCpuLoadPercent()));
+        System.out.println("System CPU usage: " + formatCpuLoad(telemetry.getSystemCpuLoadPercent()));
     }
 
     private void readWhitelist(ManagedServer server) {
@@ -243,11 +243,8 @@ public class ConsoleMenu {
     }
 
     private ManagedServer requirePrimaryServer() {
-        List<ManagedServer> servers = serverCatalogService.listServers();
-        if (servers.isEmpty()) {
-            throw new IllegalStateException("No server configured.");
-        }
-        return servers.get(0);
+        return serverCatalogService.getServer(1L)
+                .orElseThrow(() -> new IllegalStateException("No server configured."));
     }
 
     private String readLine(String prompt) {
@@ -293,5 +290,9 @@ public class ConsoleMenu {
             unitIndex++;
         }
         return String.format("%.2f %s", value, units[unitIndex]);
+    }
+
+    private String formatCpuLoad(Double cpuLoadPercent) {
+        return cpuLoadPercent == null ? "Failed to read" : String.format("%.2f%%", cpuLoadPercent);
     }
 }

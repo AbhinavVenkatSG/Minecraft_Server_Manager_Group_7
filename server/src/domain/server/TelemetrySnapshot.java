@@ -6,11 +6,11 @@ import java.util.List;
 public class TelemetrySnapshot {
     private final long serverId;
     private final ServerStatus operationalState;
-    private final double systemCpuLoadPercent;
+    private final Double systemCpuLoadPercent;
     private final long systemMemoryUsedBytes;
     private final long systemMemoryTotalBytes;
     private final long minecraftProcessMemoryBytes;
-    private final double minecraftProcessCpuLoadPercent;
+    private final Double minecraftProcessCpuLoadPercent;
     private final String jvmAllocatedRam;
     private final String jvmInitialRam;
     private final long minecraftDirectorySizeBytes;
@@ -25,11 +25,11 @@ public class TelemetrySnapshot {
     public TelemetrySnapshot(
             long serverId,
             ServerStatus operationalState,
-            double systemCpuLoadPercent,
+            Double systemCpuLoadPercent,
             long systemMemoryUsedBytes,
             long systemMemoryTotalBytes,
             long minecraftProcessMemoryBytes,
-            double minecraftProcessCpuLoadPercent,
+            Double minecraftProcessCpuLoadPercent,
             String jvmAllocatedRam,
             String jvmInitialRam,
             long minecraftDirectorySizeBytes,
@@ -68,7 +68,7 @@ public class TelemetrySnapshot {
         return operationalState;
     }
 
-    public double getSystemCpuLoadPercent() {
+    public Double getSystemCpuLoadPercent() {
         return systemCpuLoadPercent;
     }
 
@@ -84,7 +84,7 @@ public class TelemetrySnapshot {
         return minecraftProcessMemoryBytes;
     }
 
-    public double getMinecraftProcessCpuLoadPercent() {
+    public Double getMinecraftProcessCpuLoadPercent() {
         return minecraftProcessCpuLoadPercent;
     }
 

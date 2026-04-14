@@ -11,6 +11,7 @@ import org.java_websocket.WebSocket;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 public class CommandHandler {
     private final ServerSupport serverSupport;
@@ -183,13 +184,13 @@ public class CommandHandler {
         }
 
         try {
-            double cpuUsage = serverSupport.readProcessCpuLoad(context);
-            long memoryBytes = serverSupport.readProcessMemoryBytes(context.getProcess().pid());
+            OptionalDouble cpuUsage = serverSupport.readProcessCpuLoad(context);
+            long memoryBytes = serverSupport.readProcessMemoryBytes(context);
             List<String> players = serverSupport.readOnlinePlayers(serverSupport.requireMinecraftDirectory(managedServer).resolve("logs/latest.log"));
 
             String telemetry = String.format(
-                "CPU: %.1f%% | Memory: %.1fMB | Players: %d | Status: %s",
-                cpuUsage,
+                "CPU: %s | Memory: %.1fMB | Players: %d | Status: %s",
+                cpuUsage.isPresent() ? String.format("%.1f%%", cpuUsage.getAsDouble()) : "Failed to read",
                 memoryBytes / (1024.0 * 1024.0),
                 players.size(),
                 managedServer.getStatus()
@@ -214,24 +215,6 @@ public class CommandHandler {
     public void handleUnsubscribe(WebSocket conn, BinaryWebSocketServer.ClientSession session, long serverId) {
         session.subscribedServers.remove(serverId);
         sendResponse(conn, "Unsubscribed from server " + serverId);
-    }
-
-    public void handleListServers(WebSocket conn) {
-        List<ManagedServer> servers = serverSupport.listServers();
-        if (servers.isEmpty()) {
-            sendResponse(conn, "No servers configured.");
-            return;
-        }
-
-        StringBuilder sb = new StringBuilder("Servers:\n");
-        for (ManagedServer server : servers) {
-            sb.append(String.format("  [%d] %s - %s\n",
-                server.getId(),
-                server.getName(),
-                server.getStatus()
-            ));
-        }
-        sendResponse(conn, sb.toString().trim());
     }
 
     public void handleListPlayers(WebSocket conn, long serverId) {

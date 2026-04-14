@@ -40,10 +40,6 @@ public final class Responses {
                 + "}";
     }
 
-    public static String servers(List<ManagedServer> servers) {
-        return array(servers.stream().map(Responses::server).toList());
-    }
-
     public static String backup(Backup backup) {
         return "{"
                 + "\"id\":" + backup.getId() + ","
@@ -79,11 +75,11 @@ public final class Responses {
         return "{"
                 + "\"serverId\":" + snapshot.getServerId() + ","
                 + "\"operationalState\":" + Json.quote(snapshot.getOperationalState().name()) + ","
-                + "\"systemCpuLoadPercent\":" + snapshot.getSystemCpuLoadPercent() + ","
+                + "\"systemCpuLoadPercent\":" + numberOrNull(snapshot.getSystemCpuLoadPercent()) + ","
                 + "\"systemMemoryUsedBytes\":" + snapshot.getSystemMemoryUsedBytes() + ","
                 + "\"systemMemoryTotalBytes\":" + snapshot.getSystemMemoryTotalBytes() + ","
                 + "\"minecraftProcessMemoryBytes\":" + snapshot.getMinecraftProcessMemoryBytes() + ","
-                + "\"minecraftProcessCpuLoadPercent\":" + snapshot.getMinecraftProcessCpuLoadPercent() + ","
+                + "\"minecraftProcessCpuLoadPercent\":" + numberOrNull(snapshot.getMinecraftProcessCpuLoadPercent()) + ","
                 + "\"jvmAllocatedRam\":" + Json.quote(snapshot.getJvmAllocatedRam()) + ","
                 + "\"jvmInitialRam\":" + Json.quote(snapshot.getJvmInitialRam()) + ","
                 + "\"minecraftDirectorySizeBytes\":" + snapshot.getMinecraftDirectorySizeBytes() + ","
@@ -99,5 +95,9 @@ public final class Responses {
 
     private static String array(List<String> items) {
         return "[" + String.join(",", items) + "]";
+    }
+
+    private static String numberOrNull(Double value) {
+        return value == null ? "null" : value.toString();
     }
 }

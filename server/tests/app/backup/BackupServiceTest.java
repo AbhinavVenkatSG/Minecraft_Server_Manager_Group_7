@@ -24,10 +24,12 @@ class BackupServiceTest {
     private BackupService backupService;
     private ServerCatalogService serverCatalogService;
     private Path tempMcDir;
+    private Path tempBackupDir;
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) throws IOException {
         tempMcDir = tempDir.resolve("mc");
+        tempBackupDir = tempDir.resolve("backups");
         Files.createDirectories(tempMcDir);
         Files.writeString(tempMcDir.resolve("server.properties"), "server-port=25565\n");
         Files.createDirectories(tempMcDir.resolve("world"));
@@ -117,19 +119,6 @@ class BackupServiceTest {
     }
 
     @Test
-    void listBackups_perServer_isolatesBackups() {
-        ManagedServer server1 = createServer();
-        ManagedServer server2 = createServer();
-
-        backupService.createBackup(server1.getId());
-        backupService.createBackup(server1.getId());
-        backupService.createBackup(server2.getId());
-
-        assertEquals(2, backupService.listBackups(server1.getId()).size());
-        assertEquals(1, backupService.listBackups(server2.getId()).size());
-    }
-
-    @Test
     void createBackup_multipleBackups_storesAll() {
         ManagedServer server = createServer();
 
@@ -153,7 +142,7 @@ class BackupServiceTest {
     private ManagedServer createServer() {
         ServerRequest request = new ServerRequest(
             "TestServer", "localhost", 25565, "password", 25575,
-            "motd=Test", "/backups", tempMcDir.toString()
+            "motd=Test", tempBackupDir.toString(), tempMcDir.toString()
         );
         return serverCatalogService.createServer(request, 1L).orElseThrow();
     }

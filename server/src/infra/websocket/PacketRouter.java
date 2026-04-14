@@ -116,10 +116,6 @@ public class PacketRouter {
                     commandHandler.handleUnsubscribe(conn, session, unsubscribeServerId);
                     break;
 
-                case "CMD_LIST":
-                    commandHandler.handleListServers(conn);
-                    break;
-
                 case "CMD_LIST_PLAYERS":
                     if (parts.length < 2) {
                         sendError(conn, "Usage: CMD_LIST_PLAYERS <serverId>");
@@ -130,7 +126,7 @@ public class PacketRouter {
                     break;
 
                 default:
-                    sendError(conn, "Unknown command: " + command + ". Supported: CMD_START, CMD_STOP, CMD_STATUS, CMD_BACKUP, CMD_CONSOLE, CMD_TELEMETRY, CMD_SUBSCRIBE, CMD_UNSUBSCRIBE, CMD_LIST, CMD_LIST_PLAYERS");
+                    sendError(conn, "Unknown command: " + command + ". Supported: CMD_START, CMD_STOP, CMD_STATUS, CMD_BACKUP, CMD_CONSOLE, CMD_TELEMETRY, CMD_SUBSCRIBE, CMD_UNSUBSCRIBE, CMD_LIST_PLAYERS");
             }
         } catch (NumberFormatException e) {
             sendError(conn, "Invalid server ID format: " + parts[1]);

@@ -13,6 +13,7 @@ import java.util.Base64;
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -73,7 +74,7 @@ public class ServerTelemetryService {
         long driveTotal = 0L;
         long driveUsable = 0L;
         long processMemory = 0L;
-        double processCpuLoad = 0.0d;
+        Double processCpuLoad = null;
         String jvmAllocatedRam = "";
         String jvmInitialRam = "";
         List<String> newLogLines = List.of();
@@ -99,14 +100,19 @@ public class ServerTelemetryService {
 
         ServerRuntimeState.RuntimeContext context = support.getRuntimeState().getRuntimeContexts().get(server.getId());
         if (context != null && context.getProcess().isAlive()) {
-            processCpuLoad = support.readProcessCpuLoad(context);
-            processMemory = support.readProcessMemoryBytes(context.getProcess().pid());
+            OptionalDouble processCpuReading = support.readProcessCpuLoad(context);
+            processCpuLoad = processCpuReading.isPresent() ? processCpuReading.getAsDouble() : null;
+            processMemory = support.readProcessMemoryBytes(context);
         }
 
         OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
         long totalMemory = osBean.getTotalMemorySize();
         long freeMemory = osBean.getFreeMemorySize();
-        double systemCpuLoad = Math.max(0.0d, osBean.getCpuLoad() * 100.0d);
+        Double systemCpuLoad = null;
+        double rawSystemCpuLoad = osBean.getCpuLoad();
+        if (rawSystemCpuLoad >= 0.0d && Double.isFinite(rawSystemCpuLoad)) {
+            systemCpuLoad = rawSystemCpuLoad * 100.0d;
+        }
 
         String payload = buildTelemetryPayload(
                 server,
@@ -150,11 +156,11 @@ public class ServerTelemetryService {
 
     private String buildTelemetryPayload(
             ManagedServer server,
-            double systemCpuLoad,
+            Double systemCpuLoad,
             long systemMemoryUsed,
             long systemMemoryTotal,
             long processMemory,
-            double processCpuLoad,
+            Double processCpuLoad,
             String jvmAllocatedRam,
             String jvmInitialRam,
             long directorySize,
@@ -165,11 +171,11 @@ public class ServerTelemetryService {
     ) {
         return "serverId=" + server.getId()
                 + ";state=" + server.getStatus().name()
-                + ";systemCpuLoadPercent=" + support.round(systemCpuLoad)
+                + ";systemCpuLoadPercent=" + formatCpuLoadValue(systemCpuLoad)
                 + ";systemMemoryUsedBytes=" + systemMemoryUsed
                 + ";systemMemoryTotalBytes=" + systemMemoryTotal
                 + ";minecraftProcessMemoryBytes=" + processMemory
-                + ";minecraftProcessCpuLoadPercent=" + support.round(processCpuLoad)
+                + ";minecraftProcessCpuLoadPercent=" + formatCpuLoadValue(processCpuLoad)
                 + ";jvmAllocatedRam=" + jvmAllocatedRam
                 + ";jvmInitialRam=" + jvmInitialRam
                 + ";minecraftDirectorySizeBytes=" + directorySize
@@ -189,7 +195,7 @@ public class ServerTelemetryService {
         Deque<String> history = support.getRuntimeState().getTelemetryHistory().computeIfAbsent(serverId, unused -> new ArrayDeque<>());
         String entry = snapshot.getCapturedAt()
                 + " | state=" + snapshot.getOperationalState().name()
-                + " | cpu=" + support.round(snapshot.getMinecraftProcessCpuLoadPercent()) + "%"
+                + " | cpu=" + formatCpuLoad(snapshot.getMinecraftProcessCpuLoadPercent())
                 + " | ram=" + snapshot.getMinecraftProcessMemoryBytes() + " bytes"
                 + " | players=" + snapshot.getPlayerCount()
                 + " | size=" + snapshot.getMinecraftDirectorySizeBytes() + " bytes"
@@ -201,5 +207,13 @@ public class ServerTelemetryService {
                 history.removeFirst();
             }
         }
+    }
+
+    private String formatCpuLoadValue(Double cpuLoadPercent) {
+        return cpuLoadPercent == null ? "failed" : String.valueOf(support.round(cpuLoadPercent));
+    }
+
+    private String formatCpuLoad(Double cpuLoadPercent) {
+        return cpuLoadPercent == null ? "failed" : support.round(cpuLoadPercent) + "%";
     }
 }
