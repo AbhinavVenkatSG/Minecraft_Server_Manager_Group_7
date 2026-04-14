@@ -27,4 +27,8 @@ public final class PacketBuilder {
     public static Packet buildError(String message) {
         return new Packet(PacketType.ERROR, message);
     }
+
+    public static Packet buildTelemetry(String payload) {
+        return new Packet(PacketType.TELEMETRY, payload);
+    }
 }

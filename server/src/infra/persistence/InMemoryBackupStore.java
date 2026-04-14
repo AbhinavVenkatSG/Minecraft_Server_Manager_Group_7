@@ -26,6 +26,11 @@ public class InMemoryBackupStore implements BackupStore {
     }
 
     @Override
+    public java.util.Optional<Backup> findById(long backupId) {
+        return java.util.Optional.ofNullable(backups.get(backupId));
+    }
+
+    @Override
     public Backup save(Backup backup) {
         if (backup.getId() == 0L) {
             backup.setId(nextId.getAndIncrement());

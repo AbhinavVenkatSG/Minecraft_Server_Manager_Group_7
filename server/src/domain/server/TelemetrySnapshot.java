@@ -1,0 +1,130 @@
+package domain.server;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public class TelemetrySnapshot {
+    private final long serverId;
+    private final ServerStatus operationalState;
+    private final double systemCpuLoadPercent;
+    private final long systemMemoryUsedBytes;
+    private final long systemMemoryTotalBytes;
+    private final long minecraftProcessMemoryBytes;
+    private final double minecraftProcessCpuLoadPercent;
+    private final String jvmAllocatedRam;
+    private final String jvmInitialRam;
+    private final long minecraftDirectorySizeBytes;
+    private final long driveTotalBytes;
+    private final long driveUsableBytes;
+    private final int playerCount;
+    private final List<String> onlinePlayers;
+    private final List<String> newLogLines;
+    private final String packetBase64;
+    private final LocalDateTime capturedAt;
+
+    public TelemetrySnapshot(
+            long serverId,
+            ServerStatus operationalState,
+            double systemCpuLoadPercent,
+            long systemMemoryUsedBytes,
+            long systemMemoryTotalBytes,
+            long minecraftProcessMemoryBytes,
+            double minecraftProcessCpuLoadPercent,
+            String jvmAllocatedRam,
+            String jvmInitialRam,
+            long minecraftDirectorySizeBytes,
+            long driveTotalBytes,
+            long driveUsableBytes,
+            int playerCount,
+            List<String> onlinePlayers,
+            List<String> newLogLines,
+            String packetBase64,
+            LocalDateTime capturedAt
+    ) {
+        this.serverId = serverId;
+        this.operationalState = operationalState;
+        this.systemCpuLoadPercent = systemCpuLoadPercent;
+        this.systemMemoryUsedBytes = systemMemoryUsedBytes;
+        this.systemMemoryTotalBytes = systemMemoryTotalBytes;
+        this.minecraftProcessMemoryBytes = minecraftProcessMemoryBytes;
+        this.minecraftProcessCpuLoadPercent = minecraftProcessCpuLoadPercent;
+        this.jvmAllocatedRam = jvmAllocatedRam;
+        this.jvmInitialRam = jvmInitialRam;
+        this.minecraftDirectorySizeBytes = minecraftDirectorySizeBytes;
+        this.driveTotalBytes = driveTotalBytes;
+        this.driveUsableBytes = driveUsableBytes;
+        this.playerCount = playerCount;
+        this.onlinePlayers = List.copyOf(onlinePlayers);
+        this.newLogLines = List.copyOf(newLogLines);
+        this.packetBase64 = packetBase64;
+        this.capturedAt = capturedAt;
+    }
+
+    public long getServerId() {
+        return serverId;
+    }
+
+    public ServerStatus getOperationalState() {
+        return operationalState;
+    }
+
+    public double getSystemCpuLoadPercent() {
+        return systemCpuLoadPercent;
+    }
+
+    public long getSystemMemoryUsedBytes() {
+        return systemMemoryUsedBytes;
+    }
+
+    public long getSystemMemoryTotalBytes() {
+        return systemMemoryTotalBytes;
+    }
+
+    public long getMinecraftProcessMemoryBytes() {
+        return minecraftProcessMemoryBytes;
+    }
+
+    public double getMinecraftProcessCpuLoadPercent() {
+        return minecraftProcessCpuLoadPercent;
+    }
+
+    public String getJvmAllocatedRam() {
+        return jvmAllocatedRam;
+    }
+
+    public String getJvmInitialRam() {
+        return jvmInitialRam;
+    }
+
+    public long getMinecraftDirectorySizeBytes() {
+        return minecraftDirectorySizeBytes;
+    }
+
+    public long getDriveTotalBytes() {
+        return driveTotalBytes;
+    }
+
+    public long getDriveUsableBytes() {
+        return driveUsableBytes;
+    }
+
+    public int getPlayerCount() {
+        return playerCount;
+    }
+
+    public List<String> getOnlinePlayers() {
+        return onlinePlayers;
+    }
+
+    public List<String> getNewLogLines() {
+        return newLogLines;
+    }
+
+    public String getPacketBase64() {
+        return packetBase64;
+    }
+
+    public LocalDateTime getCapturedAt() {
+        return capturedAt;
+    }
+}

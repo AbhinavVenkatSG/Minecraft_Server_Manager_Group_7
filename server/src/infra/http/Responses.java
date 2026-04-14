@@ -3,6 +3,7 @@ package infra.http;
 import app.auth.dto.LoginResponse;
 import domain.backup.Backup;
 import domain.server.ManagedServer;
+import domain.server.TelemetrySnapshot;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ public final class Responses {
                 + "\"status\":" + Json.quote(server.getStatus().name()) + ","
                 + "\"serverProperties\":" + Json.quote(server.getServerProperties()) + ","
                 + "\"backupPath\":" + Json.quote(server.getBackupPath()) + ","
+                + "\"minecraftDirectory\":" + Json.quote(server.getMinecraftDirectory()) + ","
                 + "\"ownerId\":" + server.getOwnerId() + ","
                 + "\"createdAt\":" + Json.quote(server.getCreatedAt().toString()) + ","
                 + "\"lastStarted\":" + Json.quote(server.getLastStarted() == null ? "" : server.getLastStarted().toString())
@@ -59,6 +61,40 @@ public final class Responses {
 
     public static String players(List<String> players) {
         return array(players.stream().map(Json::quote).toList());
+    }
+
+    public static String stringArray(String key, List<String> values) {
+        return "{"
+                + Json.quote(key) + ":" + array(values.stream().map(Json::quote).toList())
+                + "}";
+    }
+
+    public static String textPayload(String key, String value) {
+        return "{"
+                + Json.quote(key) + ":" + Json.quote(value == null ? "" : value)
+                + "}";
+    }
+
+    public static String telemetry(TelemetrySnapshot snapshot) {
+        return "{"
+                + "\"serverId\":" + snapshot.getServerId() + ","
+                + "\"operationalState\":" + Json.quote(snapshot.getOperationalState().name()) + ","
+                + "\"systemCpuLoadPercent\":" + snapshot.getSystemCpuLoadPercent() + ","
+                + "\"systemMemoryUsedBytes\":" + snapshot.getSystemMemoryUsedBytes() + ","
+                + "\"systemMemoryTotalBytes\":" + snapshot.getSystemMemoryTotalBytes() + ","
+                + "\"minecraftProcessMemoryBytes\":" + snapshot.getMinecraftProcessMemoryBytes() + ","
+                + "\"minecraftProcessCpuLoadPercent\":" + snapshot.getMinecraftProcessCpuLoadPercent() + ","
+                + "\"jvmAllocatedRam\":" + Json.quote(snapshot.getJvmAllocatedRam()) + ","
+                + "\"jvmInitialRam\":" + Json.quote(snapshot.getJvmInitialRam()) + ","
+                + "\"minecraftDirectorySizeBytes\":" + snapshot.getMinecraftDirectorySizeBytes() + ","
+                + "\"driveTotalBytes\":" + snapshot.getDriveTotalBytes() + ","
+                + "\"driveUsableBytes\":" + snapshot.getDriveUsableBytes() + ","
+                + "\"playerCount\":" + snapshot.getPlayerCount() + ","
+                + "\"onlinePlayers\":" + array(snapshot.getOnlinePlayers().stream().map(Json::quote).toList()) + ","
+                + "\"newLogLines\":" + array(snapshot.getNewLogLines().stream().map(Json::quote).toList()) + ","
+                + "\"packetBase64\":" + Json.quote(snapshot.getPacketBase64()) + ","
+                + "\"capturedAt\":" + Json.quote(snapshot.getCapturedAt().toString())
+                + "}";
     }
 
     private static String array(List<String> items) {

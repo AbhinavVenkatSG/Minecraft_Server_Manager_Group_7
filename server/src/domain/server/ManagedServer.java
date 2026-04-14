@@ -10,8 +10,9 @@ public class ManagedServer {
     private final String rconPassword;
     private final int rconPort;
     private ServerStatus status;
-    private final String serverProperties;
-    private final String backupPath;
+    private String serverProperties;
+    private String backupPath;
+    private String minecraftDirectory;
     private final long ownerId;
     private final LocalDateTime createdAt;
     private LocalDateTime lastStarted;
@@ -26,6 +27,7 @@ public class ManagedServer {
             ServerStatus status,
             String serverProperties,
             String backupPath,
+            String minecraftDirectory,
             long ownerId,
             LocalDateTime createdAt,
             LocalDateTime lastStarted
@@ -39,6 +41,7 @@ public class ManagedServer {
         this.status = status;
         this.serverProperties = serverProperties;
         this.backupPath = backupPath;
+        this.minecraftDirectory = minecraftDirectory;
         this.ownerId = ownerId;
         this.createdAt = createdAt;
         this.lastStarted = lastStarted;
@@ -84,8 +87,24 @@ public class ManagedServer {
         return serverProperties;
     }
 
+    public void setServerProperties(String serverProperties) {
+        this.serverProperties = serverProperties;
+    }
+
     public String getBackupPath() {
         return backupPath;
+    }
+
+    public void setBackupPath(String backupPath) {
+        this.backupPath = backupPath;
+    }
+
+    public String getMinecraftDirectory() {
+        return minecraftDirectory;
+    }
+
+    public void setMinecraftDirectory(String minecraftDirectory) {
+        this.minecraftDirectory = minecraftDirectory;
     }
 
     public long getOwnerId() {

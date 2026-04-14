@@ -5,19 +5,28 @@ import app.auth.dto.LoginRequest;
 import app.auth.dto.LoginResponse;
 import app.auth.dto.RegisterRequest;
 import app.backup.BackupService;
-import app.server.ServerService;
+import app.server.RestartServerService;
+import app.server.ServerCatalogService;
+import app.server.ServerConsoleService;
+import app.server.ServerFileService;
+import app.server.ServerTelemetryService;
+import app.server.StartServerService;
+import app.server.StopServerService;
 import app.server.dto.ServerRequest;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import domain.backup.Backup;
 import domain.server.ManagedServer;
+import domain.server.TelemetrySnapshot;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -25,13 +34,36 @@ import java.util.concurrent.Executors;
 public class ApiServer {
     private final HttpServer httpServer;
     private final AuthService authService;
-    private final ServerService serverService;
+    private final ServerCatalogService serverCatalogService;
+    private final StartServerService startServerService;
+    private final StopServerService stopServerService;
+    private final RestartServerService restartServerService;
+    private final ServerConsoleService serverConsoleService;
+    private final ServerFileService serverFileService;
+    private final ServerTelemetryService serverTelemetryService;
     private final BackupService backupService;
 
-    public ApiServer(int port, AuthService authService, ServerService serverService, BackupService backupService) throws IOException {
+    public ApiServer(
+            int port,
+            AuthService authService,
+            ServerCatalogService serverCatalogService,
+            StartServerService startServerService,
+            StopServerService stopServerService,
+            RestartServerService restartServerService,
+            ServerConsoleService serverConsoleService,
+            ServerFileService serverFileService,
+            ServerTelemetryService serverTelemetryService,
+            BackupService backupService
+    ) throws IOException {
         this.httpServer = HttpServer.create(new InetSocketAddress(port), 0);
         this.authService = authService;
-        this.serverService = serverService;
+        this.serverCatalogService = serverCatalogService;
+        this.startServerService = startServerService;
+        this.stopServerService = stopServerService;
+        this.restartServerService = restartServerService;
+        this.serverConsoleService = serverConsoleService;
+        this.serverFileService = serverFileService;
+        this.serverTelemetryService = serverTelemetryService;
         this.backupService = backupService;
         this.httpServer.createContext("/api", new ApiHandler());
         this.httpServer.setExecutor(Executors.newCachedThreadPool());
@@ -39,6 +71,10 @@ public class ApiServer {
 
     public void start() {
         httpServer.start();
+    }
+
+    public void stop(int delaySeconds) {
+        httpServer.stop(Math.max(0, delaySeconds));
     }
 
     private final class ApiHandler implements HttpHandler {
@@ -67,7 +103,14 @@ public class ApiServer {
                     return;
                 }
 
+                if (parts.length >= 2 && "api".equals(parts[0]) && "backups".equals(parts[1])) {
+                    handleBackupDownloads(exchange, method, parts);
+                    return;
+                }
+
                 send(exchange, 404, Responses.message("Route not found."));
+            } catch (IllegalArgumentException | IllegalStateException exception) {
+                send(exchange, 400, Responses.message(exception.getMessage()));
             } catch (Exception exception) {
                 send(exchange, 500, Responses.message("Server error: " + exception.getMessage()));
             }
@@ -106,7 +149,7 @@ public class ApiServer {
 
     private void handleServers(HttpExchange exchange, String method, String[] parts, String body) throws IOException {
         if ("GET".equals(method) && parts.length == 2) {
-            send(exchange, 200, Responses.servers(serverService.listServers()));
+            send(exchange, 200, Responses.servers(serverCatalogService.listServers()));
             return;
         }
 
@@ -118,10 +161,11 @@ public class ApiServer {
                     Json.readString(body, "rconPassword"),
                     Json.readInt(body, "rconPort", 25575),
                     Json.readString(body, "serverProperties"),
-                    Json.readString(body, "backupPath")
+                    Json.readString(body, "backupPath"),
+                    Json.readString(body, "minecraftDirectory")
             );
 
-            Optional<ManagedServer> createdServer = serverService.createServer(request, 1L);
+            Optional<ManagedServer> createdServer = serverCatalogService.createServer(request, 1L);
             if (createdServer.isPresent()) {
                 send(exchange, 201, Responses.server(createdServer.get()));
             } else {
@@ -142,7 +186,7 @@ public class ApiServer {
         }
 
         if ("GET".equals(method) && parts.length == 3) {
-            Optional<ManagedServer> server = serverService.getServer(serverId);
+            Optional<ManagedServer> server = serverCatalogService.getServer(serverId);
             if (server.isPresent()) {
                 send(exchange, 200, Responses.server(server.get()));
             } else {
@@ -152,22 +196,17 @@ public class ApiServer {
         }
 
         if ("POST".equals(method) && parts.length == 4 && "start".equals(parts[3])) {
-            Optional<ManagedServer> server = serverService.startServer(serverId);
-            if (server.isPresent()) {
-                send(exchange, 200, Responses.server(server.get()));
-            } else {
-                send(exchange, 404, Responses.message("Server not found."));
-            }
+            sendManagedServer(exchange, startServerService.startServer(serverId));
             return;
         }
 
         if ("POST".equals(method) && parts.length == 4 && "stop".equals(parts[3])) {
-            Optional<ManagedServer> server = serverService.stopServer(serverId);
-            if (server.isPresent()) {
-                send(exchange, 200, Responses.server(server.get()));
-            } else {
-                send(exchange, 404, Responses.message("Server not found."));
-            }
+            sendManagedServer(exchange, stopServerService.stopServer(serverId));
+            return;
+        }
+
+        if ("POST".equals(method) && parts.length == 4 && "restart".equals(parts[3])) {
+            sendManagedServer(exchange, restartServerService.restartServer(serverId));
             return;
         }
 
@@ -187,32 +226,114 @@ public class ApiServer {
         }
 
         if ("GET".equals(method) && parts.length == 4 && "players".equals(parts[3])) {
-            Optional<ManagedServer> server = serverService.getServer(serverId);
-            if (server.isEmpty()) {
-                send(exchange, 404, Responses.message("Server not found."));
-                return;
-            }
-
-            List<String> players = server.get().getStatus().name().equals("RUNNING")
-                    ? List.of("Steve", "Alex")
-                    : List.of();
-            send(exchange, 200, Responses.players(players));
+            TelemetrySnapshot telemetry = serverTelemetryService.getTelemetry(serverId);
+            send(exchange, 200, Responses.players(telemetry.getOnlinePlayers()));
             return;
         }
 
         if ("POST".equals(method) && parts.length == 4 && "console".equals(parts[3])) {
-            Optional<ManagedServer> server = serverService.getServer(serverId);
-            if (server.isEmpty()) {
-                send(exchange, 404, Responses.message("Server not found."));
-                return;
-            }
-
-            String command = Json.readString(body, "command");
-            send(exchange, 200, Responses.message("Console command received: " + command));
+            send(exchange, 200, Responses.message(serverConsoleService.sendConsoleCommand(serverId, Json.readString(body, "command"))));
             return;
         }
 
+        if ("GET".equals(method) && parts.length == 4 && "console-log".equals(parts[3])) {
+            send(exchange, 200, Responses.stringArray("lines", serverConsoleService.getRecentConsoleLines(serverId)));
+            return;
+        }
+
+        if ("GET".equals(method) && parts.length == 4 && "directory".equals(parts[3])) {
+            send(exchange, 200, Responses.textPayload("minecraftDirectory", serverCatalogService.readMinecraftDirectory(serverId)));
+            return;
+        }
+
+        if ("POST".equals(method) && parts.length == 4 && "directory".equals(parts[3])) {
+            ManagedServer updated = serverCatalogService.updateMinecraftDirectory(serverId, Json.readString(body, "path"));
+            send(exchange, 200, Responses.server(updated));
+            return;
+        }
+
+        if ("GET".equals(method) && parts.length == 4 && "telemetry".equals(parts[3])) {
+            send(exchange, 200, Responses.telemetry(serverTelemetryService.getTelemetry(serverId)));
+            return;
+        }
+
+        if ("GET".equals(method) && parts.length == 4 && "start-parameters".equals(parts[3])) {
+            send(exchange, 200, Responses.textPayload("content", serverFileService.readStartParameters(serverId)));
+            return;
+        }
+
+        if ("POST".equals(method) && parts.length == 4 && "start-parameters".equals(parts[3])) {
+            ManagedServer updated = serverFileService.writeStartParameters(serverId, Json.readString(body, "content"));
+            send(exchange, 200, Responses.server(updated));
+            return;
+        }
+
+        if (parts.length == 5 && "files".equals(parts[3]) && "server-properties".equals(parts[4])) {
+            if ("GET".equals(method)) {
+                send(exchange, 200, Responses.textPayload("content", serverFileService.readServerProperties(serverId)));
+                return;
+            }
+
+            if ("POST".equals(method)) {
+                ManagedServer updated = serverFileService.writeServerProperties(serverId, Json.readString(body, "content"));
+                send(exchange, 200, Responses.server(updated));
+                return;
+            }
+        }
+
+        if (parts.length == 5 && "files".equals(parts[3]) && "whitelist".equals(parts[4])) {
+            if ("GET".equals(method)) {
+                send(exchange, 200, Responses.textPayload("content", serverFileService.readWhitelist(serverId)));
+                return;
+            }
+
+            if ("POST".equals(method)) {
+                ManagedServer updated = serverFileService.writeWhitelist(serverId, Json.readString(body, "content"));
+                send(exchange, 200, Responses.server(updated));
+                return;
+            }
+        }
+
         send(exchange, 404, Responses.message("Server route not found."));
+    }
+
+    private void handleBackupDownloads(HttpExchange exchange, String method, String[] parts) throws IOException {
+        if (!"GET".equals(method) || parts.length != 4 || !"download".equals(parts[3])) {
+            send(exchange, 404, Responses.message("Backup route not found."));
+            return;
+        }
+
+        long backupId = parseId(parts[2]);
+        if (backupId < 0) {
+            send(exchange, 400, Responses.message("Invalid backup id."));
+            return;
+        }
+
+        Optional<Backup> backup = backupService.getBackup(backupId);
+        Optional<Path> backupPath = backupService.resolveBackupFile(backupId);
+        if (backup.isEmpty() || backupPath.isEmpty()) {
+            send(exchange, 404, Responses.message("Backup not found."));
+            return;
+        }
+
+        byte[] fileBytes = Files.readAllBytes(backupPath.get());
+        exchange.getResponseHeaders().set("Content-Type", "application/zip");
+        exchange.getResponseHeaders().set(
+                "Content-Disposition",
+                "attachment; filename=\"" + backup.get().getFilename() + "\""
+        );
+        exchange.sendResponseHeaders(200, fileBytes.length);
+        try (OutputStream outputStream = exchange.getResponseBody()) {
+            outputStream.write(fileBytes);
+        }
+    }
+
+    private void sendManagedServer(HttpExchange exchange, Optional<ManagedServer> server) throws IOException {
+        if (server.isPresent()) {
+            send(exchange, 200, Responses.server(server.get()));
+        } else {
+            send(exchange, 404, Responses.message("Server not found."));
+        }
     }
 
     private long parseId(String rawValue) {

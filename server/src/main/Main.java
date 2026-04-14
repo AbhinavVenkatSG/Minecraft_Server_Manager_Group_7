@@ -2,29 +2,91 @@ package main;
 
 import app.auth.AuthService;
 import app.backup.BackupService;
-import app.server.ServerService;
+import app.server.RestartServerService;
+import app.server.ServerCatalogService;
+import app.server.ServerConsoleService;
+import app.server.ServerFileService;
+import app.server.ServerRuntimeState;
+import app.server.ServerShutdownService;
+import app.server.ServerSupport;
+import app.server.ServerTelemetryService;
+import app.server.StartServerService;
+import app.server.StopServerService;
 import infra.http.ApiServer;
-import infra.persistence.InMemoryBackupStore;
-import infra.persistence.InMemoryServerStore;
-import infra.persistence.InMemoryUserStore;
+import infra.persistence.FileBackupStore;
+import infra.persistence.FileServerStore;
+import infra.persistence.FileUserStore;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) throws Exception {
         int port = resolvePort(args);
-        InMemoryUserStore userStore = new InMemoryUserStore();
-        InMemoryServerStore serverStore = new InMemoryServerStore();
-        InMemoryBackupStore backupStore = new InMemoryBackupStore();
+        Path dataDirectory = Path.of("data");
+        Files.createDirectories(dataDirectory);
+
+        FileUserStore userStore = new FileUserStore(dataDirectory);
+        FileServerStore serverStore = new FileServerStore(dataDirectory);
+        FileBackupStore backupStore = new FileBackupStore(dataDirectory);
 
         AuthService authService = new AuthService(userStore);
-        ServerService serverService = new ServerService(serverStore);
+        ServerRuntimeState serverRuntimeState = new ServerRuntimeState();
+        ServerSupport serverSupport = new ServerSupport(serverStore, serverRuntimeState);
+        ServerCatalogService serverCatalogService = new ServerCatalogService(serverSupport);
+        StartServerService startServerService = new StartServerService(serverSupport);
+        StopServerService stopServerService = new StopServerService(serverSupport);
+        RestartServerService restartServerService = new RestartServerService(
+                serverCatalogService,
+                startServerService,
+                stopServerService
+        );
+        ServerConsoleService serverConsoleService = new ServerConsoleService(serverSupport);
+        ServerFileService serverFileService = new ServerFileService(serverSupport);
+        ServerTelemetryService serverTelemetryService = new ServerTelemetryService(serverSupport);
+        ServerShutdownService serverShutdownService = new ServerShutdownService(
+                serverSupport,
+                stopServerService,
+                serverTelemetryService
+        );
         BackupService backupService = new BackupService(backupStore, serverStore);
 
-        serverService.seedSampleData();
+        authService.ensureInteractiveAccount();
+        serverCatalogService.ensureInteractiveSetup();
 
-        ApiServer apiServer = new ApiServer(port, authService, serverService, backupService);
+        ApiServer apiServer = new ApiServer(
+                port,
+                authService,
+                serverCatalogService,
+                startServerService,
+                stopServerService,
+                restartServerService,
+                serverConsoleService,
+                serverFileService,
+                serverTelemetryService,
+                backupService
+        );
         apiServer.start();
 
         System.out.println("Minecraft Server Manager API started on http://localhost:" + port);
+        System.out.println("Local CLI menu is available below.");
+
+        ConsoleMenu consoleMenu = new ConsoleMenu(
+                serverCatalogService,
+                startServerService,
+                stopServerService,
+                restartServerService,
+                serverConsoleService,
+                serverFileService,
+                serverTelemetryService,
+                backupService
+        );
+        try {
+            consoleMenu.run();
+        } finally {
+            apiServer.stop(0);
+            serverShutdownService.shutdown();
+        }
     }
 
     private static int resolvePort(String[] args) {

@@ -6,7 +6,8 @@ public enum PacketType {
     CONSOLE_LOG((byte) 0x03),
     HEARTBEAT((byte) 0x04),
     FILE_CHUNK((byte) 0x05),
-    ERROR((byte) 0x06);
+    ERROR((byte) 0x06),
+    TELEMETRY((byte) 0x07);
 
     private final byte value;
 

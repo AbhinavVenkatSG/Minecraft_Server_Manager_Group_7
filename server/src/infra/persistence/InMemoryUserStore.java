@@ -14,6 +14,11 @@ public class InMemoryUserStore implements UserStore {
     private final Map<String, User> usersByUsername = new ConcurrentHashMap<>();
 
     @Override
+    public boolean isEmpty() {
+        return usersById.isEmpty();
+    }
+
+    @Override
     public Optional<User> findByUsername(String username) {
         return Optional.ofNullable(usersByUsername.get(username));
     }

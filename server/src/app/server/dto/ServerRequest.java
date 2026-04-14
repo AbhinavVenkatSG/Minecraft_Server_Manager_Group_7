@@ -8,6 +8,7 @@ public class ServerRequest {
     private final int rconPort;
     private final String serverProperties;
     private final String backupPath;
+    private final String minecraftDirectory;
 
     public ServerRequest(
             String name,
@@ -16,7 +17,8 @@ public class ServerRequest {
             String rconPassword,
             int rconPort,
             String serverProperties,
-            String backupPath
+            String backupPath,
+            String minecraftDirectory
     ) {
         this.name = name;
         this.host = host;
@@ -25,6 +27,7 @@ public class ServerRequest {
         this.rconPort = rconPort;
         this.serverProperties = serverProperties;
         this.backupPath = backupPath;
+        this.minecraftDirectory = minecraftDirectory;
     }
 
     public String getName() {
@@ -53,5 +56,9 @@ public class ServerRequest {
 
     public String getBackupPath() {
         return backupPath;
+    }
+
+    public String getMinecraftDirectory() {
+        return minecraftDirectory;
     }
 }
