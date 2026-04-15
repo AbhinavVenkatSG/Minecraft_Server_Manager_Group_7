@@ -17,23 +17,50 @@ import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * Creates and retrieves zip backups for a managed server.
+ */
 public class BackupService {
     private final BackupStore backupStore;
     private final ServerStore serverStore;
 
+    /**
+     * Wires backup operations to the backup and server stores.
+     *
+     * @param backupStore backup metadata storage
+     * @param serverStore managed server storage
+     */
     public BackupService(BackupStore backupStore, ServerStore serverStore) {
         this.backupStore = backupStore;
         this.serverStore = serverStore;
     }
 
+    /**
+     * Returns every backup recorded for a server.
+     *
+     * @param serverId managed server id
+     * @return backups in store order
+     */
     public List<Backup> listBackups(long serverId) {
         return backupStore.findByServerId(serverId);
     }
 
+    /**
+     * Loads a single backup record by id.
+     *
+     * @param backupId backup id
+     * @return the backup when it exists
+     */
     public Optional<Backup> getBackup(long backupId) {
         return backupStore.findById(backupId);
     }
 
+    /**
+     * Resolves the on-disk archive path for a backup if the file still exists.
+     *
+     * @param backupId backup id
+     * @return the archive path when both metadata and file are present
+     */
     public Optional<Path> resolveBackupFile(long backupId) {
         return backupStore.findById(backupId)
                 .map(Backup::getFilePath)
@@ -41,6 +68,12 @@ public class BackupService {
                 .filter(Files::exists);
     }
 
+    /**
+     * Zips the server's world directory into a timestamped backup archive.
+     *
+     * @param serverId managed server id
+     * @return the saved backup record when the server exists
+     */
     public Optional<Backup> createBackup(long serverId) {
         Optional<ManagedServer> server = serverStore.findById(serverId);
         if (server.isEmpty()) {

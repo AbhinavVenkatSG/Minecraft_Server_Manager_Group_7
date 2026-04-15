@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
+/**
+ * Simple local console UI for exercising the server manager without the web client.
+ */
 public class ConsoleMenu {
     private static final double BYTES_PER_GIGABYTE = 1024d * 1024d * 1024d;
 
@@ -33,6 +36,9 @@ public class ConsoleMenu {
     private final BackupService backupService;
     private final Scanner scanner;
 
+    /**
+     * Creates the console menu from the application's core services.
+     */
     public ConsoleMenu(
             AuthService authService,
             ServerCatalogService serverCatalogService,
@@ -56,6 +62,9 @@ public class ConsoleMenu {
         this.scanner = new Scanner(System.in);
     }
 
+    /**
+     * Runs the menu loop until the user selects exit.
+     */
     public void run() {
         boolean running = true;
         while (running) {

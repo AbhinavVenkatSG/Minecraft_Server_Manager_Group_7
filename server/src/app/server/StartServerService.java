@@ -8,13 +8,27 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * Launches the configured Minecraft process and tracks its runtime context.
+ */
 public class StartServerService {
     private final ServerSupport support;
 
+    /**
+     * Creates a start service backed by shared server helpers.
+     *
+     * @param support shared server helpers and runtime state
+     */
     public StartServerService(ServerSupport support) {
         this.support = support;
     }
 
+    /**
+     * Starts the server process for the requested managed server.
+     *
+     * @param serverId managed server id
+     * @return the updated server when it exists
+     */
     public Optional<ManagedServer> startServer(long serverId) {
         Optional<ManagedServer> server = support.getServer(serverId);
         if (server.isEmpty()) {
@@ -33,6 +47,7 @@ public class StartServerService {
             managedServer.setStatus(ServerStatus.BLOCKED);
             support.saveServer(managedServer);
 
+            // The local setup uses batch files, so the process must be launched through cmd.
             Process process = new ProcessBuilder("cmd.exe", "/c", startScript.getFileName().toString())
                     .directory(minecraftDirectory.toFile())
                     .redirectErrorStream(true)

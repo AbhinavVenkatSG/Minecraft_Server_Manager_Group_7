@@ -21,6 +21,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Shared helper methods for server persistence, filesystem access, log parsing, and process telemetry.
+ */
 public class ServerSupport {
     private static final int MAX_CONSOLE_LINES = 250;
     private static final Pattern PLAYER_JOIN_PATTERN = Pattern.compile(": ([A-Za-z0-9_]{1,16}) joined the game");
@@ -29,36 +32,78 @@ public class ServerSupport {
     private final ServerStore serverStore;
     private final ServerRuntimeState runtimeState;
 
+    /**
+     * Creates the shared helper facade used by the server services.
+     *
+     * @param serverStore persistent managed server storage
+     * @param runtimeState in-memory runtime state
+     */
     public ServerSupport(ServerStore serverStore, ServerRuntimeState runtimeState) {
         this.serverStore = serverStore;
         this.runtimeState = runtimeState;
     }
 
+    /**
+     * Returns the underlying persistent server store.
+     *
+     * @return server store implementation
+     */
     public ServerStore getServerStore() {
         return serverStore;
     }
 
+    /**
+     * Returns the in-memory runtime state for live processes and telemetry caches.
+     *
+     * @return runtime state container
+     */
     public ServerRuntimeState getRuntimeState() {
         return runtimeState;
     }
 
+    /**
+     * Lists all persisted servers.
+     *
+     * @return known servers
+     */
     public List<ManagedServer> listServers() {
         return serverStore.findAll();
     }
 
+    /**
+     * Finds a server by id.
+     *
+     * @param serverId managed server id
+     * @return the server when it exists
+     */
     public Optional<ManagedServer> getServer(long serverId) {
         return serverStore.findById(serverId);
     }
 
+    /**
+     * Persists the supplied server record.
+     *
+     * @param server server to save
+     * @return the saved server
+     */
     public ManagedServer saveServer(ManagedServer server) {
         return serverStore.save(server);
     }
 
+    /**
+     * Loads a server or throws when the id is unknown.
+     *
+     * @param serverId managed server id
+     * @return the stored server
+     */
     public ManagedServer requireServer(long serverId) {
         return serverStore.findById(serverId)
                 .orElseThrow(() -> new IllegalArgumentException("Server not found."));
     }
 
+    /**
+     * Converts persisted running states back to a safe startup or stopped state after a restart.
+     */
     public void normalizePersistedState() {
         for (ManagedServer server : serverStore.findAll()) {
             if (server.getStatus() == ServerStatus.RUNNING || server.getStatus() == ServerStatus.BLOCKED) {
@@ -68,6 +113,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Verifies that a directory exists and looks like a Minecraft server folder.
+     *
+     * @param directory candidate Minecraft directory
+     * @return normalized absolute directory path
+     */
     public Path validateMinecraftDirectory(Path directory) {
         Path normalized = directory.toAbsolutePath().normalize();
         if (!Files.isDirectory(normalized)) {
@@ -85,6 +136,12 @@ public class ServerSupport {
         return normalized;
     }
 
+    /**
+     * Returns the configured Minecraft directory for a server, or throws when unset.
+     *
+     * @param server managed server record
+     * @return validated Minecraft directory
+     */
     public Path requireMinecraftDirectory(ManagedServer server) {
         if (isBlank(server.getMinecraftDirectory())) {
             throw new IllegalStateException("Minecraft directory has not been configured.");
@@ -92,6 +149,12 @@ public class ServerSupport {
         return validateMinecraftDirectory(Path.of(server.getMinecraftDirectory()));
     }
 
+    /**
+     * Resolves the batch script used to start the Minecraft server.
+     *
+     * @param minecraftDirectory Minecraft directory
+     * @return matching start script path
+     */
     public Path resolveStartScript(Path minecraftDirectory) {
         Path[] candidates = new Path[] {
                 minecraftDirectory.resolve("start.bat"),
@@ -108,6 +171,12 @@ public class ServerSupport {
         throw new IllegalStateException("No start script found in the Minecraft directory.");
     }
 
+    /**
+     * Resolves the whitelist file, preferring JSON when both formats are possible.
+     *
+     * @param minecraftDirectory Minecraft directory
+     * @return whitelist file path
+     */
     public Path resolveWhitelistFile(Path minecraftDirectory) {
         Path json = minecraftDirectory.resolve("whitelist.json");
         if (Files.exists(json)) {
@@ -122,16 +191,33 @@ public class ServerSupport {
         return json;
     }
 
+    /**
+     * Blocks edits while the server is running or transitioning.
+     *
+     * @param server managed server record
+     */
     public void ensureServerStopped(ManagedServer server) {
         if (server.getStatus() == ServerStatus.RUNNING || server.getStatus() == ServerStatus.BLOCKED) {
             throw new IllegalStateException("Stop the server before editing files.");
         }
     }
 
+    /**
+     * Reads a file when it exists, otherwise returns an empty string.
+     *
+     * @param path file path to inspect
+     * @return file contents or an empty string
+     */
     public String readOptionalFile(Path path) {
         return Files.exists(path) ? readRequiredFile(path) : "";
     }
 
+    /**
+     * Reads a UTF-8 text file or throws a service-level error.
+     *
+     * @param path file path to read
+     * @return file contents
+     */
     public String readRequiredFile(Path path) {
         try {
             return Files.readString(path, StandardCharsets.UTF_8);
@@ -140,6 +226,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Writes a UTF-8 text file, creating parent directories when needed.
+     *
+     * @param path output file path
+     * @param content text to write
+     */
     public void writeTextFile(Path path, String content) {
         try {
             Path parent = path.getParent();
@@ -152,6 +244,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Computes the total size of every regular file in a directory tree.
+     *
+     * @param root directory root
+     * @return total size in bytes
+     */
     public long computeDirectorySize(Path root) {
         try {
             return Files.walk(root)
@@ -169,6 +267,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Reads total and usable disk space for the filesystem containing the path.
+     *
+     * @param path path on the target filesystem
+     * @return array of {@code [totalBytes, usableBytes]}
+     */
     public long[] getDriveMetrics(Path path) {
         try {
             FileStore fileStore = Files.getFileStore(path);
@@ -178,6 +282,13 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Reads only the log lines appended since the last snapshot for the server.
+     *
+     * @param serverId managed server id
+     * @param latestLogPath path to {@code latest.log}
+     * @return new log lines since the last read
+     */
     public List<String> readNewLogLines(long serverId, Path latestLogPath) {
         if (!Files.exists(latestLogPath)) {
             return List.of();
@@ -200,6 +311,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Replays the latest log to derive the set of currently online players.
+     *
+     * @param latestLogPath path to {@code latest.log}
+     * @return player names that appear to still be online
+     */
     public List<String> readOnlinePlayers(Path latestLogPath) {
         if (!Files.exists(latestLogPath)) {
             return List.of();
@@ -225,6 +342,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Chooses the live process that best represents the actual Minecraft JVM for telemetry.
+     *
+     * @param context tracked runtime context
+     * @return the most relevant process handle when one can be identified
+     */
     public Optional<ProcessHandle> resolveTelemetryProcess(ServerRuntimeState.RuntimeContext context) {
         if (context == null || context.getProcess() == null) {
             return Optional.empty();
@@ -246,6 +369,12 @@ public class ServerSupport {
         return Optional.of(root);
     }
 
+    /**
+     * Computes CPU usage from two successive process samples.
+     *
+     * @param context tracked runtime context
+     * @return CPU load percent when enough sampling data exists
+     */
     public OptionalDouble readProcessCpuLoad(ServerRuntimeState.RuntimeContext context) {
         if (context.getProcess() == null) {
             return OptionalDouble.empty();
@@ -262,6 +391,7 @@ public class ServerSupport {
             return OptionalDouble.empty();
         }
 
+        // ProcessHandle only gives cumulative CPU time, so usage has to be derived from deltas.
         long now = System.nanoTime();
         long pid = processHandle.pid();
         long cpuNanos = cpuDuration.get().toNanos();
@@ -290,6 +420,12 @@ public class ServerSupport {
         return OptionalDouble.of(Math.max(0.0d, usage));
     }
 
+    /**
+     * Reads memory usage for the live telemetry process.
+     *
+     * @param context tracked runtime context
+     * @return memory usage in bytes
+     */
     public long readProcessMemoryBytes(ServerRuntimeState.RuntimeContext context) {
         Optional<ProcessHandle> telemetryProcess = resolveTelemetryProcess(context);
         if (telemetryProcess.isEmpty()) {
@@ -299,6 +435,12 @@ public class ServerSupport {
         return readProcessMemoryBytes(telemetryProcess.get().pid());
     }
 
+    /**
+     * Reads memory usage for a Windows process via {@code tasklist}.
+     *
+     * @param pid process id
+     * @return memory usage in bytes, or zero when it cannot be measured
+     */
     public long readProcessMemoryBytes(long pid) {
         try {
             Process probe = new ProcessBuilder(
@@ -329,6 +471,12 @@ public class ServerSupport {
         }
     }
 
+    /**
+     * Splits a CSV line while preserving quoted commas.
+     *
+     * @param line raw CSV line
+     * @return parsed columns
+     */
     public String[] parseCsvLine(String line) {
         List<String> parts = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -350,6 +498,13 @@ public class ServerSupport {
         return parts.toArray(String[]::new);
     }
 
+    /**
+     * Chooses the server properties content supplied during server creation.
+     *
+     * @param minecraftDirectory configured Minecraft directory, if any
+     * @param requested request payload contents
+     * @return explicit request contents, disk contents, or an empty string
+     */
     public String defaultServerProperties(String minecraftDirectory, String requested) {
         if (!isBlank(requested)) {
             return requested.trim();
@@ -361,6 +516,13 @@ public class ServerSupport {
         return "";
     }
 
+    /**
+     * Starts a daemon thread that mirrors the process output into the console buffer.
+     *
+     * @param serverId managed server id
+     * @param server managed server record
+     * @param context tracked runtime context
+     */
     public void startOutputPump(long serverId, ManagedServer server, ServerRuntimeState.RuntimeContext context) {
         Thread thread = new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(
@@ -389,6 +551,12 @@ public class ServerSupport {
         thread.start();
     }
 
+    /**
+     * Clears runtime state and persists a safe stopped status after process exit.
+     *
+     * @param serverId managed server id
+     * @param server managed server record
+     */
     public void finalizeStoppedServer(long serverId, ManagedServer server) {
         ServerRuntimeState.RuntimeContext context = runtimeState.getRuntimeContexts().remove(serverId);
         if (context != null) {
@@ -403,14 +571,32 @@ public class ServerSupport {
         serverStore.save(server);
     }
 
+    /**
+     * Checks whether a string is null, empty, or whitespace only.
+     *
+     * @param value candidate text
+     * @return true when the text is blank
+     */
     public boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
+    /**
+     * Trims a string and collapses nulls to an empty string.
+     *
+     * @param value candidate text
+     * @return safe trimmed text
+     */
     public String safe(String value) {
         return value == null ? "" : value.trim();
     }
 
+    /**
+     * Rounds a floating-point value to two decimal places.
+     *
+     * @param value source number
+     * @return rounded number
+     */
     public double round(double value) {
         return Math.round(value * 100.0d) / 100.0d;
     }

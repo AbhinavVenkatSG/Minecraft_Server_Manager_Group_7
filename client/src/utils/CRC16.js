@@ -1,6 +1,9 @@
 const POLYNOMIAL = 0x1021;
 const PRESET = 0xFFFF;
 
+/**
+ * Calculates the CRC16 checksum used by the binary packet protocol.
+ */
 function calculate(data) {
   let crc = PRESET;
 
@@ -21,6 +24,9 @@ function calculate(data) {
   return crc;
 }
 
+/**
+ * Verifies a payload against an expected CRC16 value.
+ */
 function verify(data, expectedCrc) {
   return calculate(data) === expectedCrc;
 }

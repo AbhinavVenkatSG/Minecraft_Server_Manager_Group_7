@@ -3,6 +3,9 @@ import { Power, RotateCcw, Square, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useWebSocket } from "../contexts/WebSocketContext";
 
+/**
+ * Displays the selected server identity, status, and lifecycle controls.
+ */
 export default function ServerHeader({ server, onUpdate }) {
   const { startServer, stopServer, restartServer, servers } = useWebSocket();
   const [loading, setLoading] = useState(false);

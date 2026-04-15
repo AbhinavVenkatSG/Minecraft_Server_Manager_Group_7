@@ -8,6 +8,9 @@ interface NavLinkCompatProps extends Omit<NavLinkProps, "className"> {
   pendingClassName?: string;
 }
 
+/**
+ * Small compatibility wrapper that restores active and pending class helpers.
+ */
 const NavLink = forwardRef(({ className, activeClassName, pendingClassName, to, ...props }, ref) => {
   return (
     <RouterNavLink

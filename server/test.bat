@@ -76,6 +76,9 @@ del sources.txt test_sources.txt 2>nul
 echo.
 echo Running tests...
 echo ==================
+pushd "%~dp0.."
 java -jar "%JUNIT_JAR%" execute -cp "%OUT_DIR%;%DEPENDENCY_CP%" --scan-classpath
+set TEST_EXIT=%ERRORLEVEL%
+popd
 
-exit /b %ERRORLEVEL%
+exit /b %TEST_EXIT%

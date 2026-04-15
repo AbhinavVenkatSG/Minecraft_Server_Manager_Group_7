@@ -8,6 +8,9 @@ import {
 
 const API_KEY = 'minecraft_server_manager_key';
 
+/**
+ * Low-level binary websocket hook kept for packet-based experiments outside the main dashboard context.
+ */
 const useBinaryWebSocket = (url, onMessage) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastError, setLastError] = useState(null);
@@ -30,6 +33,7 @@ const useBinaryWebSocket = (url, onMessage) => {
       setIsConnected(true);
       setLastError(null);
 
+      // Keep the websocket alive the same way the server-side transport expects.
       heartbeatIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(buildHeartbeat().toBytes());

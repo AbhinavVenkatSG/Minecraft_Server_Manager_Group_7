@@ -29,10 +29,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * Minimal HTTP API surface for auth, server control, file editing, telemetry, and backups.
+ */
 public class ApiServer {
     private final HttpServer httpServer;
+    private final ExecutorService executor;
     private final AuthService authService;
     private final ServerCatalogService serverCatalogService;
     private final StartServerService startServerService;
@@ -43,6 +49,21 @@ public class ApiServer {
     private final ServerTelemetryService serverTelemetryService;
     private final BackupService backupService;
 
+    /**
+     * Creates the HTTP server and wires the application services into the route handler.
+     *
+     * @param port HTTP port to bind
+     * @param authService auth service
+     * @param serverCatalogService server catalog service
+     * @param startServerService start service
+     * @param stopServerService stop service
+     * @param restartServerService restart service
+     * @param serverConsoleService console service
+     * @param serverFileService file service
+     * @param serverTelemetryService telemetry service
+     * @param backupService backup service
+     * @throws IOException when the HTTP server cannot be created
+     */
     public ApiServer(
             int port,
             AuthService authService,
@@ -65,16 +86,31 @@ public class ApiServer {
         this.serverFileService = serverFileService;
         this.serverTelemetryService = serverTelemetryService;
         this.backupService = backupService;
+        this.executor = Executors.newCachedThreadPool();
         this.httpServer.createContext("/api", new ApiHandler());
-        this.httpServer.setExecutor(Executors.newCachedThreadPool());
+        this.httpServer.setExecutor(this.executor);
     }
 
+    /**
+     * Starts accepting HTTP requests.
+     */
     public void start() {
         httpServer.start();
     }
 
+    /**
+     * Stops the HTTP server and waits briefly for worker threads to drain.
+     *
+     * @param delaySeconds HTTP server stop delay
+     */
     public void stop(int delaySeconds) {
         httpServer.stop(Math.max(0, delaySeconds));
+        executor.shutdown();
+        try {
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private final class ApiHandler implements HttpHandler {
@@ -148,11 +184,6 @@ public class ApiServer {
     }
 
     private void handleServers(HttpExchange exchange, String method, String[] parts, String body) throws IOException {
-        if ("GET".equals(method) && parts.length == 2) {
-            send(exchange, 200, Responses.servers(serverCatalogService.listServers()));
-            return;
-        }
-
         if ("POST".equals(method) && parts.length == 2) {
             ServerRequest request = new ServerRequest(
                     Json.readString(body, "name"),

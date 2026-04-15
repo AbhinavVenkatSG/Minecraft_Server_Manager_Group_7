@@ -1,19 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, Plus, Server, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Server, LogOut } from "lucide-react";
 import ServerHeader from "./ServerHeader";
 import ServerStats from "./ServerStats";
+import ServerBackups from "./ServerBackups";
 import ChatLogs from "./ChatLogs";
 import ConfigEditor from "./ConfigEditor";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "./ui/button";
 
+/**
+ * Main dashboard shell for selecting a server and showing its controls and data panels.
+ */
 export default function Index() {
   const { servers, isConnected, requestServerList } = useWebSocket();
   const { user, logout } = useAuth();
   const [selectedServer, setSelectedServer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const currentSelectedServer = servers.find((server) => server.id === selectedServer?.id) || selectedServer;
 
   useEffect(() => {
     if (isConnected && servers.length > 0) {
@@ -72,7 +77,7 @@ export default function Index() {
               key={server.id}
               onClick={() => setSelectedServer(server)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
-                selectedServer?.id === server.id
+                currentSelectedServer?.id === server.id
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card text-foreground border-border hover:border-primary"
               }`}
@@ -84,12 +89,13 @@ export default function Index() {
         )}
       </div>
 
-      <ServerHeader server={selectedServer} onUpdate={handleServerUpdate} />
-      <ServerStats server={selectedServer} refreshKey={refreshKey} />
+      <ServerHeader server={currentSelectedServer} onUpdate={handleServerUpdate} />
+      <ServerStats server={currentSelectedServer} refreshKey={refreshKey} />
+      <ServerBackups server={currentSelectedServer} refreshKey={refreshKey} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4" style={{ height: "calc(100vh - 320px)", minHeight: "400px" }}>
-        <ChatLogs server={selectedServer} refreshKey={refreshKey} />
-        <ConfigEditor server={selectedServer} refreshKey={refreshKey} />
+        <ChatLogs server={currentSelectedServer} refreshKey={refreshKey} />
+        <ConfigEditor server={currentSelectedServer} refreshKey={refreshKey} />
       </div>
     </div>
   );

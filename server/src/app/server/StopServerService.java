@@ -6,13 +6,27 @@ import domain.server.ServerStatus;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Stops a running Minecraft process, escalating from graceful shutdown to kill when needed.
+ */
 public class StopServerService {
     private final ServerSupport support;
 
+    /**
+     * Creates a stop service backed by shared server helpers.
+     *
+     * @param support shared server helpers and runtime state
+     */
     public StopServerService(ServerSupport support) {
         this.support = support;
     }
 
+    /**
+     * Stops the requested server and persists the final stopped state.
+     *
+     * @param serverId managed server id
+     * @return the updated server when it exists
+     */
     public Optional<ManagedServer> stopServer(long serverId) {
         Optional<ManagedServer> server = support.getServer(serverId);
         if (server.isEmpty()) {

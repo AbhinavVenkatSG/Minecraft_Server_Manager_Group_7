@@ -20,6 +20,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Collects runtime and filesystem telemetry for the managed server on demand and on a schedule.
+ */
 public class ServerTelemetryService {
     private static final int MAX_TELEMETRY_HISTORY = 50;
     private static final Pattern XMX_PATTERN = Pattern.compile("(?i)-Xmx(\\S+)");
@@ -28,11 +31,22 @@ public class ServerTelemetryService {
     private final ServerSupport support;
     private final ScheduledExecutorService telemetryScheduler = Executors.newSingleThreadScheduledExecutor();
 
+    /**
+     * Creates the telemetry service and starts the periodic refresh task.
+     *
+     * @param support shared server helpers and runtime state
+     */
     public ServerTelemetryService(ServerSupport support) {
         this.support = support;
         telemetryScheduler.scheduleAtFixedRate(this::refreshTelemetrySafely, 30, 30, TimeUnit.SECONDS);
     }
 
+    /**
+     * Collects a fresh telemetry snapshot for a server and caches it in runtime state.
+     *
+     * @param serverId managed server id
+     * @return freshly captured telemetry
+     */
     public TelemetrySnapshot getTelemetry(long serverId) {
         ManagedServer server = support.requireServer(serverId);
         TelemetrySnapshot snapshot = collectTelemetry(server);
@@ -40,10 +54,22 @@ public class ServerTelemetryService {
         return snapshot;
     }
 
+    /**
+     * Returns the most recently cached telemetry snapshot for a server.
+     *
+     * @param serverId managed server id
+     * @return the cached snapshot when one has already been captured
+     */
     public Optional<TelemetrySnapshot> getLatestTelemetry(long serverId) {
         return Optional.ofNullable(support.getRuntimeState().getLatestTelemetry().get(serverId));
     }
 
+    /**
+     * Returns the compact telemetry history entries kept in memory for the server.
+     *
+     * @param serverId managed server id
+     * @return telemetry history entries in insertion order
+     */
     public List<String> getTelemetryHistory(long serverId) {
         Deque<String> history = support.getRuntimeState().getTelemetryHistory().get(serverId);
         if (history == null) {
@@ -55,6 +81,9 @@ public class ServerTelemetryService {
         }
     }
 
+    /**
+     * Stops the background telemetry scheduler.
+     */
     public void shutdown() {
         telemetryScheduler.shutdownNow();
     }

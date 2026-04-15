@@ -18,6 +18,9 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
+/**
+ * Binary websocket endpoint used by the client for command, status, and telemetry packets.
+ */
 public class BinaryWebSocketServer extends WebSocketServer {
     private static final String EXPECTED_API_KEY = "minecraft_server_manager_key";
     private static final int HEARTBEAT_INTERVAL_SECONDS = 30;
@@ -27,6 +30,13 @@ public class BinaryWebSocketServer extends WebSocketServer {
     private final CommandHandler commandHandler;
     private final ScheduledExecutorService heartbeatScheduler;
 
+    /**
+     * Creates the websocket server and packet command handler.
+     *
+     * @param port websocket port to bind
+     * @param serverSupport shared server helpers and runtime state
+     * @throws IOException when the socket cannot be created
+     */
     public BinaryWebSocketServer(int port, ServerSupport serverSupport) throws IOException {
         super(new InetSocketAddress(port));
         this.serverSupport = serverSupport;
@@ -138,6 +148,12 @@ public class BinaryWebSocketServer extends WebSocketServer {
         System.out.println("Binary WebSocket Server started on " + getAddress());
     }
 
+    /**
+     * Sends one packet to a connected client.
+     *
+     * @param conn websocket connection
+     * @param packet packet to serialize and send
+     */
     public void sendPacket(WebSocket conn, Packet packet) {
         if (conn != null && conn.isOpen()) {
             try {
@@ -148,12 +164,23 @@ public class BinaryWebSocketServer extends WebSocketServer {
         }
     }
 
+    /**
+     * Broadcasts a packet to every connected websocket client.
+     *
+     * @param packet packet to send
+     */
     public void broadcastPacket(Packet packet) {
         for (WebSocket conn : clients.keySet()) {
             sendPacket(conn, packet);
         }
     }
 
+    /**
+     * Sends a packet only to clients subscribed to a specific server id.
+     *
+     * @param serverId managed server id
+     * @param packet packet to send
+     */
     public void sendToAllServerSubscribers(long serverId, Packet packet) {
         for (Map.Entry<WebSocket, ClientSession> entry : clients.entrySet()) {
             if (entry.getValue().subscribedServers.contains(serverId)) {
@@ -162,10 +189,18 @@ public class BinaryWebSocketServer extends WebSocketServer {
         }
     }
 
+    /**
+     * Returns the number of currently connected websocket clients.
+     *
+     * @return live client count
+     */
     public int getConnectedClientCount() {
         return clients.size();
     }
 
+    /**
+     * Per-connection state kept alongside the websocket session.
+     */
     public static class ClientSession {
         public final java.util.Set<Long> subscribedServers = ConcurrentHashMap.newKeySet();
         public String authToken;

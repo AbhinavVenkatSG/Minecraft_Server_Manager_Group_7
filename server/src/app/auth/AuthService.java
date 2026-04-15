@@ -12,13 +12,27 @@ import java.util.Scanner;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Handles registration and login against the configured {@link UserStore}.
+ */
 public class AuthService {
     private final UserStore userStore;
 
+    /**
+     * Creates an auth service backed by the provided user store.
+     *
+     * @param userStore persistent user storage
+     */
     public AuthService(UserStore userStore) {
         this.userStore = userStore;
     }
 
+    /**
+     * Authenticates a user and returns the session payload used by the client.
+     *
+     * @param request raw login input from the caller
+     * @return a populated login response when the credentials match
+     */
     public Optional<LoginResponse> login(LoginRequest request) {
         if (request == null || isBlank(request.getUsername()) || isBlank(request.getPassword())) {
             return Optional.empty();
@@ -31,6 +45,12 @@ public class AuthService {
                 .map(LoginResponse::fromUser);
     }
 
+    /**
+     * Registers a new user when the username is still available.
+     *
+     * @param request raw registration input from the caller
+     * @return a login response for the new account when creation succeeds
+     */
     public Optional<LoginResponse> register(RegisterRequest request) {
         if (request == null || isBlank(request.getUsername()) || isBlank(request.getPassword())) {
             return Optional.empty();
@@ -54,6 +74,9 @@ public class AuthService {
         return Optional.of(LoginResponse.fromUser(userStore.save(user)));
     }
 
+    /**
+     * Prompts on the console for an initial account when the store is empty.
+     */
     public void ensureInteractiveAccount() {
         if (!userStore.isEmpty()) {
             return;

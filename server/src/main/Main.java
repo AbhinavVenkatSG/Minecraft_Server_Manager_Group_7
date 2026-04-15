@@ -21,7 +21,16 @@ import infra.websocket.BinaryWebSocketServer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Application entry point that wires stores, services, transports, and the local CLI.
+ */
 public class Main {
+    /**
+     * Boots the server manager and keeps it alive until the console menu exits.
+     *
+     * @param args optional API and websocket ports
+     * @throws Exception when startup fails
+     */
     public static void main(String[] args) throws Exception {
         int apiPort = resolveApiPort(args);
         int webSocketPort = resolveWebSocketPort(args, apiPort);

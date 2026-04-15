@@ -8,6 +8,9 @@ import LoginModal from "./components/LoginModal";
 
 const queryClient = new QueryClient();
 
+/**
+ * Root client application wiring providers, routing, and the auth modal shell.
+ */
 function App() {
   return (
     <QueryClientProvider client={queryClient}>

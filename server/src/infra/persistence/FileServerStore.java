@@ -17,11 +17,19 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * File-backed {@link ServerStore} implementation for managed server metadata.
+ */
 public class FileServerStore implements ServerStore {
     private final Path serverDirectory;
     private final AtomicLong nextId = new AtomicLong(1L);
     private final ConcurrentHashMap<Long, ManagedServer> servers = new ConcurrentHashMap<>();
 
+    /**
+     * Creates the store, ensures its directories exist, and loads persisted servers.
+     *
+     * @param rootDirectory application data directory
+     */
     public FileServerStore(Path rootDirectory) {
         try {
             this.serverDirectory = rootDirectory.resolve("servers");
@@ -33,6 +41,9 @@ public class FileServerStore implements ServerStore {
     }
 
     @Override
+    /**
+     * Returns every persisted server ordered by id.
+     */
     public List<ManagedServer> findAll() {
         List<ManagedServer> values = new ArrayList<>(servers.values());
         values.sort(Comparator.comparingLong(ManagedServer::getId));
@@ -40,11 +51,23 @@ public class FileServerStore implements ServerStore {
     }
 
     @Override
+    /**
+     * Finds a server by id.
+     *
+     * @param id server id
+     * @return matching server when found
+     */
     public Optional<ManagedServer> findById(long id) {
         return Optional.ofNullable(servers.get(id));
     }
 
     @Override
+    /**
+     * Saves a server, assigning the next numeric id when needed.
+     *
+     * @param server server to persist
+     * @return the saved server
+     */
     public synchronized ManagedServer save(ManagedServer server) {
         if (server.getId() == 0L) {
             server.setId(nextId.getAndIncrement());

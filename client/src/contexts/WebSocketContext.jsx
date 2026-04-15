@@ -9,6 +9,9 @@ const API_KEY = 'minecraft_server_manager_key';
 
 const WebSocketContext = createContext(null);
 
+/**
+ * Coordinates websocket liveness and the REST-backed server data used by the dashboard.
+ */
 export function WebSocketProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
@@ -51,6 +54,7 @@ export function WebSocketProvider({ children }) {
     ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => {
+      // The server expects a lightweight keepalive so idle connections stay warm.
       heartbeatIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(buildHeartbeat().toBytes());
@@ -78,6 +82,7 @@ export function WebSocketProvider({ children }) {
       wsRef.current = null;
 
       if (event.code !== 1000 && isAuthenticated) {
+        // A short retry loop is enough here because the dashboard is local-first.
         reconnectTimeoutRef.current = setTimeout(() => {
           connect();
         }, 3000);
@@ -321,6 +326,9 @@ export function WebSocketProvider({ children }) {
   );
 }
 
+/**
+ * Returns websocket-driven dashboard state and actions.
+ */
 export function useWebSocket() {
   const context = useContext(WebSocketContext);
   if (!context) {
@@ -331,28 +339,39 @@ export function useWebSocket() {
 
 export default WebSocketContext;
 
+/**
+ * Adds a few UI-friendly derived fields on top of the raw telemetry payload.
+ */
 function mapTelemetry(snapshot) {
-  const cpuUsage = round(snapshot.minecraftProcessCpuLoadPercent ?? snapshot.systemCpuLoadPercent ?? 0);
-  const memoryUsage = snapshot.systemMemoryTotalBytes
-    ? round((snapshot.systemMemoryUsedBytes / snapshot.systemMemoryTotalBytes) * 100)
+  const isRunning = snapshot.operationalState === 'RUNNING';
+  const memoryLimitBytes = parseJvmRamToBytes(snapshot.jvmAllocatedRam);
+  const cpuUsage = isRunning ? round(snapshot.minecraftProcessCpuLoadPercent ?? 0) : 0;
+  const memoryBytes = isRunning ? Math.max(0, snapshot.minecraftProcessMemoryBytes ?? 0) : 0;
+  const memoryUsage = memoryLimitBytes > 0
+    ? round((memoryBytes / memoryLimitBytes) * 100)
     : 0;
-  const diskUsedBytes = Math.max(0, (snapshot.driveTotalBytes ?? 0) - (snapshot.driveUsableBytes ?? 0));
-  const diskUsage = snapshot.driveTotalBytes
-    ? round((diskUsedBytes / snapshot.driveTotalBytes) * 100)
-    : 0;
+  const storageBytes = Math.max(0, snapshot.minecraftDirectorySizeBytes ?? 0);
 
   return {
     ...snapshot,
+    isRunning,
     cpuUsage,
+    memoryBytes,
+    memoryLimitBytes,
     memoryUsage,
-    diskUsage,
-    cpuInfo: snapshot.operationalState,
-    memoryInfo: `${formatBytes(snapshot.systemMemoryUsedBytes)} / ${formatBytes(snapshot.systemMemoryTotalBytes)}`,
-    diskInfo: `${formatBytes(diskUsedBytes)} / ${formatBytes(snapshot.driveTotalBytes)}`,
+    storageBytes,
+    cpuInfo: isRunning ? 'Minecraft server process' : 'Server stopped',
+    memoryInfo: memoryLimitBytes > 0
+      ? `${formatBytes(memoryBytes)} / ${formatBytes(memoryLimitBytes)}`
+      : formatBytes(memoryBytes),
+    storageInfo: 'Minecraft server directory size',
     newLogLines: Array.isArray(snapshot.newLogLines) ? snapshot.newLogLines : [],
   };
 }
 
+/**
+ * Keeps only the most recent console lines to avoid unbounded client-side growth.
+ */
 function mergeConsoleLines(existing, incoming) {
   const combined = [...existing, ...incoming];
   return combined.slice(-250);
@@ -377,4 +396,32 @@ function formatBytes(value) {
   }
 
   return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+/**
+ * Converts JVM RAM flags like {@code 2G} or {@code 512M} into bytes.
+ */
+function parseJvmRamToBytes(value) {
+  if (!value) {
+    return 0;
+  }
+
+  const match = String(value).trim().match(/^(\d+(?:\.\d+)?)([kmg])?b?$/i);
+  if (!match) {
+    return 0;
+  }
+
+  const amount = Number(match[1]);
+  const unit = (match[2] || 'b').toUpperCase();
+
+  switch (unit) {
+    case 'K':
+      return Math.round(amount * 1024);
+    case 'M':
+      return Math.round(amount * 1024 * 1024);
+    case 'G':
+      return Math.round(amount * 1024 * 1024 * 1024);
+    default:
+      return Math.round(amount);
+  }
 }

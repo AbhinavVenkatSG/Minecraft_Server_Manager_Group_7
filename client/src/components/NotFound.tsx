@@ -1,6 +1,9 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
+/**
+ * Fallback route that logs the missing path and offers a way back home.
+ */
 const NotFound = () => {
   const location = useLocation();
 

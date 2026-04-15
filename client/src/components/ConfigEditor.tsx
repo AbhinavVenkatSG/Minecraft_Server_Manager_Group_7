@@ -10,6 +10,9 @@ const FILE_TYPES = [
   { id: "start-parameters", name: "start.sh", fetchFn: (id) => api.getStartParameters(id), saveFn: (id, content) => api.updateStartParameters(id, content) },
 ];
 
+/**
+ * Tabbed editor for the small set of server-managed configuration files exposed by the API.
+ */
 export default function ConfigEditor({ server, refreshKey }) {
   const [activeFile, setActiveFile] = useState(FILE_TYPES[0].id);
   const [files, setFiles] = useState({});
@@ -28,6 +31,9 @@ export default function ConfigEditor({ server, refreshKey }) {
     }
   }, [server?.id, refreshKey]);
 
+  /**
+   * Loads the editable server files in sequence so each tab always has a defined value.
+   */
   const fetchAllFiles = async () => {
     setLoading(true);
     const fetchedFiles = {};

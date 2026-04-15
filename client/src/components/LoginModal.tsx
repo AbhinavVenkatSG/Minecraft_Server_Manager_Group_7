@@ -6,6 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2, Server } from 'lucide-react';
 
+/**
+ * Blocking auth dialog shown until the client has a valid session.
+ */
 export default function LoginModal() {
   const { showLogin, setShowLogin, login, register } = useAuth();
   const [mode, setMode] = useState('login');
@@ -47,6 +50,9 @@ export default function LoginModal() {
     }
   };
 
+  /**
+   * Flips between login and registration while clearing per-mode form errors.
+   */
   const switchMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
     setError('');

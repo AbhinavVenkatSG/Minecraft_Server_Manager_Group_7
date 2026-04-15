@@ -17,6 +17,9 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * File-backed {@link UserStore} that encrypts each persisted user record.
+ */
 public class FileUserStore implements UserStore {
     private final Path userDirectory;
     private final SecretKey secretKey;
@@ -24,6 +27,11 @@ public class FileUserStore implements UserStore {
     private final Map<String, User> usersByUsername = new ConcurrentHashMap<>();
     private final AtomicLong nextId = new AtomicLong(1L);
 
+    /**
+     * Creates the store, ensures its directories exist, and loads persisted users.
+     *
+     * @param rootDirectory application data directory
+     */
     public FileUserStore(Path rootDirectory) {
         try {
             this.userDirectory = rootDirectory.resolve("users");
@@ -41,11 +49,23 @@ public class FileUserStore implements UserStore {
     }
 
     @Override
+    /**
+     * Looks up a user by their exact username.
+     *
+     * @param username username to search
+     * @return matching user when found
+     */
     public Optional<User> findByUsername(String username) {
         return Optional.ofNullable(usersByUsername.get(username));
     }
 
     @Override
+    /**
+     * Saves a user, assigning the next numeric id when needed.
+     *
+     * @param user user to persist
+     * @return the saved user
+     */
     public synchronized User save(User user) {
         if (user.getId() == 0L) {
             user.setId(nextId.getAndIncrement());

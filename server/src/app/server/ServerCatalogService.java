@@ -10,22 +10,48 @@ import app.server.dto.ServerRequest;
 import domain.server.ManagedServer;
 import domain.server.ServerStatus;
 
+/**
+ * Owns creation and lookup of the single managed Minecraft server entry.
+ */
 public class ServerCatalogService {
     private final ServerSupport support;
 
+    /**
+     * Creates the catalog service and normalizes any stale runtime state from disk.
+     *
+     * @param support shared server helpers and persistence access
+     */
     public ServerCatalogService(ServerSupport support) {
         this.support = support;
         this.support.normalizePersistedState();
     }
 
+    /**
+     * Finds a managed server by id.
+     *
+     * @param serverId managed server id
+     * @return the stored server when present
+     */
     public Optional<ManagedServer> getServer(long serverId) {
         return support.getServer(serverId);
     }
 
+    /**
+     * Lists the managed servers currently persisted by the application.
+     *
+     * @return all known servers
+     */
     public java.util.List<ManagedServer> listServers() {
         return support.listServers();
     }
 
+    /**
+     * Validates and creates the single managed server entry.
+     *
+     * @param request requested server details
+     * @param ownerId owning user id
+     * @return the saved server when creation succeeds
+     */
     public Optional<ManagedServer> createServer(ServerRequest request, long ownerId) {
         if (request == null || support.isBlank(request.getName()) || support.isBlank(request.getHost()) || request.getPort() <= 0) {
             return Optional.empty();
@@ -58,6 +84,9 @@ public class ServerCatalogService {
         return Optional.of(support.saveServer(server));
     }
 
+    /**
+     * Prompts for a Minecraft directory when no server has been configured yet.
+     */
     public void ensureInteractiveSetup() {
         if (!support.listServers().isEmpty()) {
             return;
@@ -96,10 +125,23 @@ public class ServerCatalogService {
         }
     }
 
+    /**
+     * Returns the configured Minecraft directory for the requested server.
+     *
+     * @param serverId managed server id
+     * @return stored Minecraft directory path
+     */
     public String readMinecraftDirectory(long serverId) {
         return support.requireServer(serverId).getMinecraftDirectory();
     }
 
+    /**
+     * Replaces the configured Minecraft directory and refreshes file-backed state.
+     *
+     * @param serverId managed server id
+     * @param rawDirectory user supplied directory path
+     * @return the updated server record
+     */
     public ManagedServer updateMinecraftDirectory(long serverId, String rawDirectory) {
         ManagedServer server = support.requireServer(serverId);
         if (server.getStatus() == ServerStatus.RUNNING) {

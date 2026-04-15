@@ -12,6 +12,9 @@ const typeColors = {
   command: "text-info",
 };
 
+/**
+ * Console viewer and command box for the selected server.
+ */
 export default function ChatLogs({ server, refreshKey }) {
   const {
     consoleLogs,
@@ -49,6 +52,7 @@ export default function ChatLogs({ server, refreshKey }) {
       return undefined;
     }
 
+    // Polling fills gaps for console output while the current websocket flow stays lightweight.
     const intervalId = setInterval(() => {
       requestConsoleLogs(server.id);
     }, 3000);
@@ -76,6 +80,9 @@ export default function ChatLogs({ server, refreshKey }) {
       });
   };
 
+  /**
+   * Applies lightweight styling hints based on common Minecraft log patterns.
+   */
   const formatLine = (line, index) => {
     const timestamp = new Date().toLocaleTimeString();
     let type = "info";

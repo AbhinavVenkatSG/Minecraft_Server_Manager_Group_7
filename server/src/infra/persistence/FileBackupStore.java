@@ -16,11 +16,19 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * File-backed {@link BackupStore} implementation for backup metadata.
+ */
 public class FileBackupStore implements BackupStore {
     private final Path backupDirectory;
     private final AtomicLong nextId = new AtomicLong(1L);
     private final ConcurrentHashMap<Long, Backup> backups = new ConcurrentHashMap<>();
 
+    /**
+     * Creates the store, ensures its directories exist, and loads persisted backups.
+     *
+     * @param rootDirectory application data directory
+     */
     public FileBackupStore(Path rootDirectory) {
         try {
             this.backupDirectory = rootDirectory.resolve("backups");
@@ -32,6 +40,12 @@ public class FileBackupStore implements BackupStore {
     }
 
     @Override
+    /**
+     * Returns all backups for the given server ordered by id.
+     *
+     * @param serverId managed server id
+     * @return matching backups
+     */
     public List<Backup> findByServerId(long serverId) {
         List<Backup> matches = new ArrayList<>();
         for (Backup backup : backups.values()) {
@@ -44,11 +58,23 @@ public class FileBackupStore implements BackupStore {
     }
 
     @Override
+    /**
+     * Finds a backup by id.
+     *
+     * @param backupId backup id
+     * @return matching backup when found
+     */
     public Optional<Backup> findById(long backupId) {
         return Optional.ofNullable(backups.get(backupId));
     }
 
     @Override
+    /**
+     * Saves a backup, assigning the next numeric id when needed.
+     *
+     * @param backup backup to persist
+     * @return the saved backup
+     */
     public synchronized Backup save(Backup backup) {
         if (backup.getId() == 0L) {
             backup.setId(nextId.getAndIncrement());

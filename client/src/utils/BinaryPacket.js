@@ -1,6 +1,9 @@
 import CRC16 from './CRC16';
 import { PacketType, toValue } from './PacketType';
 
+/**
+ * Small binary packet wrapper shared by the websocket transport helpers.
+ */
 class Packet {
   constructor(type, payload) {
     this.type = type;
@@ -48,6 +51,9 @@ class Packet {
   }
 }
 
+/**
+ * Parses one binary frame into a Packet instance.
+ */
 function parse(data) {
   if (data.length < 5) {
     throw new Error('Packet is too short.');
@@ -70,6 +76,9 @@ function parse(data) {
   return new Packet(type, payload);
 }
 
+/**
+ * Resolves the packet type name from the numeric wire value.
+ */
 function fromValue(value) {
   for (const key in PacketType) {
     if (PacketType[key] === value) {
@@ -79,30 +88,51 @@ function fromValue(value) {
   throw new Error(`Unknown packet type: ${value}`);
 }
 
+/**
+ * Builds a command packet.
+ */
 function buildCommand(command) {
   return new Packet('COMMAND', command);
 }
 
+/**
+ * Builds a generic response packet.
+ */
 function buildResponse(message) {
   return new Packet('RESPONSE', message);
 }
 
+/**
+ * Builds a console log packet.
+ */
 function buildConsoleLog(message) {
   return new Packet('CONSOLE_LOG', message);
 }
 
+/**
+ * Builds a heartbeat packet.
+ */
 function buildHeartbeat() {
   return new Packet('HEARTBEAT', 'ping');
 }
 
+/**
+ * Builds a file chunk packet.
+ */
 function buildFileChunk(payload) {
   return new Packet('FILE_CHUNK', payload);
 }
 
+/**
+ * Builds an error packet.
+ */
 function buildError(message) {
   return new Packet('ERROR', message);
 }
 
+/**
+ * Builds a telemetry packet.
+ */
 function buildTelemetry(payload) {
   return new Packet('TELEMETRY', payload);
 }

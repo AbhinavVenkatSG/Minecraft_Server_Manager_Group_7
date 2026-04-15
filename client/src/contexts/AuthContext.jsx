@@ -5,6 +5,9 @@ const AuthContext = createContext(null);
 
 const STORAGE_KEY = 'minecraft_manager_session';
 
+/**
+ * Keeps the logged-in session in memory and mirrors it into session storage.
+ */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -80,6 +83,9 @@ export function AuthProvider({ children }) {
   );
 }
 
+/**
+ * Returns the current auth context and enforces provider usage.
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
@@ -90,6 +96,9 @@ export function useAuth() {
 
 export default AuthContext;
 
+/**
+ * Normalizes older stored session shapes into the current client format.
+ */
 function normalizeSession(session) {
   if (session?.user && session?.token) {
     return session;
