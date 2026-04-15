@@ -1,5 +1,17 @@
+/**
+ * @file Json.java
+ * @brief Minimal JSON parsing and serialization utilities for HTTP API.
+ * @ingroup infra
+ * @{
+ */
+
 package infra.http;
 
+/**
+ * @class Json
+ * @brief Utility class for simple JSON operations.
+ * @details Provides basic JSON field extraction and string quoting.
+ */
 public final class Json {
     private Json() {
     }

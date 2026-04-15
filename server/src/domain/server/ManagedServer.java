@@ -1,7 +1,18 @@
+/**
+ * @file ManagedServer.java
+ * @brief Domain entity representing a managed Minecraft server instance.
+ * @{
+ */
+
 package domain.server;
 
 import java.time.LocalDateTime;
 
+/**
+ * @class ManagedServer
+ * @brief Represents a managed Minecraft server configuration.
+ * @details Contains server connection details, status, paths, and metadata.
+ */
 public class ManagedServer {
     private long id;
     private final String name;

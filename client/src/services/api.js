@@ -1,7 +1,16 @@
+/**
+ * @file api.js
+ * @brief HTTP API client for the Minecraft Server Manager backend.
+ * @{
+ */
+
+/** @brief Base URL for the REST API */
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000/api').replace(/\/$/, '');
 
 /**
- * Thin wrapper around the HTTP API used by the dashboard.
+ * @class ApiService
+ * @brief Thin wrapper around the HTTP API used by the dashboard.
+ * @details Provides methods for authentication, server management, and telemetry.
  */
 class ApiService {
   /**

@@ -1,8 +1,16 @@
+/**
+ * @file BinaryPacket.js
+ * @brief Binary packet serialization and parsing for WebSocket communication.
+ * @{
+ */
+
 import CRC16 from './CRC16';
 import { PacketType, toValue } from './PacketType';
 
 /**
- * Small binary packet wrapper shared by the websocket transport helpers.
+ * @class Packet
+ * @brief Represents a binary packet for WebSocket communication.
+ * @details Packets contain type, CRC checksum, length, and UTF-8 payload.
  */
 class Packet {
   constructor(type, payload) {

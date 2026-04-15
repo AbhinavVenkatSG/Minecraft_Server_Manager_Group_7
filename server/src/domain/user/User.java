@@ -1,7 +1,19 @@
+/**
+ * @file User.java
+ * @brief Domain entity representing an authenticated user.
+ * @defgroup domain Domain Layer
+ * @{
+ */
+
 package domain.user;
 
 import java.time.LocalDateTime;
 
+/**
+ * @class User
+ * @brief Represents a user account in the system.
+ * @details Contains user credentials, authentication token, and metadata.
+ */
 public class User {
     private long id;
     private final String username;

@@ -1,3 +1,10 @@
+/**
+ * @file CommandHandler.java
+ * @brief Handles incoming WebSocket commands and routes them to appropriate services.
+ * @ingroup app
+ * @{
+ */
+
 package app.server;
 
 import app.backup.BackupService;
@@ -13,6 +20,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
+/**
+ * @class CommandHandler
+ * @brief Processes incoming WebSocket commands and sends responses.
+ * @details Routes commands for server control, telemetry, console, and subscriptions.
+ */
 public class CommandHandler {
     private final ServerSupport serverSupport;
     private final BinaryWebSocketServer webSocketServer;

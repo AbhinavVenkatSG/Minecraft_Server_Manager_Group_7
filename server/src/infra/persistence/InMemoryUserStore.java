@@ -1,3 +1,10 @@
+/**
+ * @file InMemoryUserStore.java
+ * @brief In-memory implementation of UserStore for testing.
+ * @ingroup infra
+ * @{
+ */
+
 package infra.persistence;
 
 import app.auth.UserStore;
@@ -8,6 +15,10 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * @class InMemoryUserStore
+ * @brief Non-persistent UserStore implementation for unit testing.
+ */
 public class InMemoryUserStore implements UserStore {
     private final AtomicLong nextId = new AtomicLong(1);
     private final Map<Long, User> usersById = new ConcurrentHashMap<>();

@@ -1,3 +1,10 @@
+/**
+ * @file Responses.java
+ * @brief Helper class for building HTTP JSON responses.
+ * @ingroup infra
+ * @{
+ */
+
 package infra.http;
 
 import app.auth.dto.LoginResponse;
@@ -7,6 +14,10 @@ import domain.server.TelemetrySnapshot;
 
 import java.util.List;
 
+/**
+ * @class Responses
+ * @brief Factory for consistent HTTP JSON response formatting.
+ */
 public final class Responses {
     private Responses() {
     }

@@ -1,5 +1,16 @@
+/**
+ * @file CRC16.java
+ * @brief CRC16 checksum calculation and verification.
+ * @ingroup core
+ * @{
+ */
+
 package core.util;
 
+/**
+ * @class CRC16
+ * @brief Implements CRC16-CCITT checksum for packet validation.
+ */
 public final class CRC16 {
     private static final int POLYNOMIAL = 0x1021;
     private static final int PRESET = 0xFFFF;

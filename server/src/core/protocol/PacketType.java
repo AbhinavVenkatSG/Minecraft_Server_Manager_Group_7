@@ -1,5 +1,16 @@
+/**
+ * @file PacketType.java
+ * @brief Enumeration of binary packet types.
+ * @ingroup core
+ * @{
+ */
+
 package core.protocol;
 
+/**
+ * @enum PacketType
+ * @brief Defines the type of binary packet being transmitted.
+ */
 public enum PacketType {
     COMMAND((byte) 0x01),
     RESPONSE((byte) 0x02),

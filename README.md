@@ -1,3 +1,4 @@
+\mainpage Minecraft Server Manager
 # Minecraft Server Manager
 
 A full-stack web application for remote management of Minecraft game servers through a binary WebSocket communication protocol.
@@ -22,7 +23,7 @@ This project enables users to:
 
 ---
 
-## Protocol Design
+##  Protocol Design
 
 ### Packet Structure
 
@@ -44,7 +45,7 @@ Total Header: 5 bytes
 
 ---
 
-## Implementation Status
+##  Implementation Status
 
 | Phase | Status | Description |
 |-------|--------|-------------|
@@ -72,7 +73,7 @@ The following features are not yet implemented (Phase 5):
 
 ---
 
-## Implemented Features
+##  Implemented Features
 
 ### Backend
 
@@ -135,7 +136,7 @@ Client runs on `http://localhost:5173`
 
 ---
 
-## File Structure
+##  File Structure
 
 ```
 Minecraft_Server_Manager_Group_7/

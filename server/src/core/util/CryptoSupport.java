@@ -1,3 +1,10 @@
+/**
+ * @file CryptoSupport.java
+ * @brief Cryptographic utilities for password hashing and data encryption.
+ * @ingroup core
+ * @{
+ */
+
 package core.util;
 
 import javax.crypto.Cipher;
@@ -12,6 +19,11 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
+/**
+ * @class CryptoSupport
+ * @brief Provides encryption, decryption, and password hashing utilities.
+ * @details Uses AES-GCM for encryption and SHA-256 for password hashing.
+ */
 public final class CryptoSupport {
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH_BITS = 128;

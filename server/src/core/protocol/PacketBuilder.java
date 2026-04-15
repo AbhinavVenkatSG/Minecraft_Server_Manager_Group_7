@@ -1,5 +1,16 @@
+/**
+ * @file PacketBuilder.java
+ * @brief Factory for creating binary packets with proper formatting.
+ * @ingroup core
+ * @{
+ */
+
 package core.protocol;
 
+/**
+ * @class PacketBuilder
+ * @brief Utility class for constructing Packet instances.
+ */
 public final class PacketBuilder {
     private PacketBuilder() {
     }

@@ -1,7 +1,18 @@
+/**
+ * @file Backup.java
+ * @brief Domain entity representing a server backup archive.
+ * @{
+ */
+
 package domain.backup;
 
 import java.time.LocalDateTime;
 
+/**
+ * @class Backup
+ * @brief Represents a backup archive of a Minecraft server.
+ * @details Contains metadata about the backup including file path and size.
+ */
 public class Backup {
     private long id;
     private final long serverId;

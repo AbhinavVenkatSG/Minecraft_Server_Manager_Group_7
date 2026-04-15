@@ -1,8 +1,22 @@
+/**
+ * @file CRC16.js
+ * @brief CRC16-CCITT checksum implementation for packet validation.
+ * @{
+ */
+
+/**
+ * @brief CRC polynomial for CCITT algorithm
+ */
 const POLYNOMIAL = 0x1021;
+/**
+ * @brief Initial CRC value
+ */
 const PRESET = 0xFFFF;
 
 /**
- * Calculates the CRC16 checksum used by the binary packet protocol.
+ * @brief Calculates the CRC16 checksum used by the binary packet protocol.
+ * @param {Uint8Array|number[]} data - Input byte array
+ * @returns {number} CRC16 checksum value
  */
 function calculate(data) {
   let crc = PRESET;
@@ -25,7 +39,10 @@ function calculate(data) {
 }
 
 /**
- * Verifies a payload against an expected CRC16 value.
+ * @brief Verifies a payload against an expected CRC16 value.
+ * @param {Uint8Array|number[]} data - Input byte array
+ * @param {number} expectedCrc - Expected CRC value
+ * @returns {boolean} True if CRC matches
  */
 function verify(data, expectedCrc) {
   return calculate(data) === expectedCrc;

@@ -1,8 +1,19 @@
+/**
+ * @file ServerShutdownService.java
+ * @brief Gracefully shuts down all running Minecraft servers on application exit.
+ * @ingroup app
+ * @{
+ */
+
 package app.server;
 
 import domain.server.ManagedServer;
 import domain.server.ServerStatus;
 
+/**
+ * @class ServerShutdownService
+ * @brief Manages graceful shutdown of all server processes.
+ */
 public class ServerShutdownService {
     private final ServerSupport support;
     private final StopServerService stopServerService;

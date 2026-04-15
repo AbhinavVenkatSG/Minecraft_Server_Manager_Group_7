@@ -1,3 +1,10 @@
+/**
+ * @file InMemoryBackupStore.java
+ * @brief In-memory implementation of BackupStore for testing.
+ * @ingroup infra
+ * @{
+ */
+
 package infra.persistence;
 
 import app.backup.BackupStore;
@@ -9,6 +16,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * @class InMemoryBackupStore
+ * @brief Non-persistent BackupStore implementation for unit testing.
+ */
 public class InMemoryBackupStore implements BackupStore {
     private final AtomicLong nextId = new AtomicLong(1);
     private final ConcurrentHashMap<Long, Backup> backups = new ConcurrentHashMap<>();

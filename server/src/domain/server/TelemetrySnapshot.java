@@ -1,8 +1,19 @@
+/**
+ * @file TelemetrySnapshot.java
+ * @brief Domain entity containing server telemetry data at a point in time.
+ * @{
+ */
+
 package domain.server;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * @class TelemetrySnapshot
+ * @brief Immutable snapshot of server runtime telemetry.
+ * @details Captures CPU, memory, disk, player, and log information.
+ */
 public class TelemetrySnapshot {
     private final long serverId;
     private final ServerStatus operationalState;

@@ -1,3 +1,10 @@
+/**
+ * @file InMemoryServerStore.java
+ * @brief In-memory implementation of ServerStore for testing.
+ * @ingroup infra
+ * @{
+ */
+
 package infra.persistence;
 
 import app.server.ServerStore;
@@ -10,6 +17,10 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * @class InMemoryServerStore
+ * @brief Non-persistent ServerStore implementation for unit testing.
+ */
 public class InMemoryServerStore implements ServerStore {
     private final AtomicLong nextId = new AtomicLong(1);
     private final ConcurrentHashMap<Long, ManagedServer> servers = new ConcurrentHashMap<>();

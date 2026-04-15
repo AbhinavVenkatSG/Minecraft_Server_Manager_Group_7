@@ -1,3 +1,10 @@
+/**
+ * @file Packet.java
+ * @brief Binary packet structure for WebSocket communication.
+ * @ingroup core
+ * @{
+ */
+
 package core.protocol;
 
 import core.util.CRC16;
@@ -5,6 +12,11 @@ import core.util.CRC16;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * @class Packet
+ * @brief Represents a binary packet with type, CRC, length, and payload.
+ * @details Packets are used for all WebSocket communication between client and server.
+ */
 public class Packet {
     private final PacketType type;
     private final short crc;

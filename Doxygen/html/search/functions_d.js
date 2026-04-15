@@ -1,0 +1,23 @@
+var searchData=
+[
+  ['safe_0',['safe',['../classapp_1_1server_1_1_server_support.html#a2c4c7a9b232547d34c5739764471029e',1,'app::server::ServerSupport']]],
+  ['save_1',['save',['../interfaceapp_1_1auth_1_1_user_store.html#a3f0349b501b0575a1f3eac5ba492137f',1,'app.auth.UserStore.save()'],['../interfaceapp_1_1backup_1_1_backup_store.html#a56e4a7db444f32f077b1543e5c120aba',1,'app.backup.BackupStore.save()'],['../interfaceapp_1_1server_1_1_server_store.html#aee80526ed9d4e634fc10275bb9623bf6',1,'app.server.ServerStore.save()'],['../classinfra_1_1persistence_1_1_file_backup_store.html#a8af73b2bb3da8381faf31c7564f00fcf',1,'infra.persistence.FileBackupStore.save()'],['../classinfra_1_1persistence_1_1_file_server_store.html#a6941f0916060ce8a3421135425c88a04',1,'infra.persistence.FileServerStore.save()'],['../classinfra_1_1persistence_1_1_file_user_store.html#a7e10f3c0d048c2c265f6dbad0847d61c',1,'infra.persistence.FileUserStore.save()'],['../classinfra_1_1persistence_1_1_in_memory_backup_store.html#a48a6a0f92956f9ad959f888aa982e802',1,'infra.persistence.InMemoryBackupStore.save()'],['../classinfra_1_1persistence_1_1_in_memory_server_store.html#a8c16e9251f8fb511347c9b55aad16b04',1,'infra.persistence.InMemoryServerStore.save()'],['../classinfra_1_1persistence_1_1_in_memory_user_store.html#a85367e91ba01e01aeb0c79244b4e1012',1,'infra.persistence.InMemoryUserStore.save()']]],
+  ['saveserver_2',['saveServer',['../classapp_1_1server_1_1_server_support.html#a00eda4a5f3ca792022ef8bc5f0c8b821',1,'app::server::ServerSupport']]],
+  ['sendconsolecommand_3',['sendConsoleCommand',['../classapp_1_1server_1_1_server_console_service.html#ae984465e805b1e9a809d6a9777522e8a',1,'app::server::ServerConsoleService']]],
+  ['sendpacket_4',['sendPacket',['../classinfra_1_1websocket_1_1_binary_web_socket_server.html#a674ed15a1e1eead9759b0b9c94623d90',1,'infra::websocket::BinaryWebSocketServer']]],
+  ['sendtoallserversubscribers_5',['sendToAllServerSubscribers',['../classinfra_1_1websocket_1_1_binary_web_socket_server.html#a442d27cc572896e1de31b5adc1c795a9',1,'infra::websocket::BinaryWebSocketServer']]],
+  ['servercatalogservice_6',['ServerCatalogService',['../classapp_1_1server_1_1_server_catalog_service.html#a27bc20de3c61f68717389b32aac12a52',1,'app::server::ServerCatalogService']]],
+  ['serverconsoleservice_7',['ServerConsoleService',['../classapp_1_1server_1_1_server_console_service.html#a5155be9cc9750f1466afe7e3acc412db',1,'app::server::ServerConsoleService']]],
+  ['serverfileservice_8',['ServerFileService',['../classapp_1_1server_1_1_server_file_service.html#a9ac15d0e0a2e265bc0dd770c7bd173b8',1,'app::server::ServerFileService']]],
+  ['serverrequest_9',['ServerRequest',['../classapp_1_1server_1_1dto_1_1_server_request.html#ad2e050b9509001d81a8be096ef9374e8',1,'app::server::dto::ServerRequest']]],
+  ['serversupport_10',['ServerSupport',['../classapp_1_1server_1_1_server_support.html#af1b6a87302b5693e79216bff0662d456',1,'app::server::ServerSupport']]],
+  ['servertelemetryservice_11',['ServerTelemetryService',['../classapp_1_1server_1_1_server_telemetry_service.html#a6556d6154790842f4ab8c5702e833207',1,'app::server::ServerTelemetryService']]],
+  ['shutdown_12',['shutdown',['../classapp_1_1server_1_1_server_telemetry_service.html#a8b074895348cbd1bd26e4f2b909a0db9',1,'app::server::ServerTelemetryService']]],
+  ['start_13',['start',['../classinfra_1_1http_1_1_api_server.html#a9dd35674ff7145312652bba885984327',1,'infra::http::ApiServer']]],
+  ['startoutputpump_14',['startOutputPump',['../classapp_1_1server_1_1_server_support.html#a14bc6f6e830ede4a9efcf1cb41ce4d67',1,'app::server::ServerSupport']]],
+  ['startserver_15',['startServer',['../classapp_1_1server_1_1_start_server_service.html#a0143529db67e70bda5c9af1d92266182',1,'app::server::StartServerService']]],
+  ['startserverservice_16',['StartServerService',['../classapp_1_1server_1_1_start_server_service.html#abc3671953029a5fe2b4efb66b955eac7',1,'app::server::StartServerService']]],
+  ['stop_17',['stop',['../classinfra_1_1http_1_1_api_server.html#ac541d076fc1b477c981d520bc60e0418',1,'infra::http::ApiServer']]],
+  ['stopserver_18',['stopServer',['../classapp_1_1server_1_1_stop_server_service.html#a084d1774122a69c9300121ea0c803d76',1,'app::server::StopServerService']]],
+  ['stopserverservice_19',['StopServerService',['../classapp_1_1server_1_1_stop_server_service.html#a66db2463073e4b13adf2c2205737d1b1',1,'app::server::StopServerService']]]
+];
